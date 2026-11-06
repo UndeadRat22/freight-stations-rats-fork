@@ -37,6 +37,12 @@ local function station_entity(tier, art, family, axis, size)
     icon_size = 64,
     -- No upgrade path exists, so no size is an upgrade source.
     flags = { "placeable-neutral", "player-creation", "not-upgradable" },
+    -- Vanilla-container behaviour: a station can be built over (fast
+    -- replaced) by a blueprint ghost of another station or of its placer.
+    -- Contents survive the replacement: same prototype + link_id keeps the
+    -- linked inventory, and a size change re-collects through the resize
+    -- pass (scripts/groups.lua).
+    fast_replaceable_group = "freight-stations-station",
     minable = { mining_time = 0.5, result = tier.item },
     -- Never placed by an item, only through the placer: a hidden one keeps
     -- every size out of the upgrade planner (constants.placeholder).

@@ -29,7 +29,7 @@ local LENGTH = constants.STATION_TILES + GAP -- 7
 -- `pictures` is an Animation4Way. Without graphics the placer is
 -- invisible, and so are the cursor preview while placing and the ghosts of
 -- every blueprint (blueprints store placers, see scripts/blueprint.lua).
-local function void_machine(name, icon, result, tile_width, tile_height, collision, selection, pictures)
+local function void_machine(name, icon, result, tile_width, tile_height, collision, selection, pictures, group)
   return {
     type = "assembling-machine",
     name = name,
@@ -37,6 +37,10 @@ local function void_machine(name, icon, result, tile_width, tile_height, collisi
     icon_size = 64,
     -- No upgrade path exists, so keep it out of the upgrade planner.
     flags = { "placeable-neutral", "player-creation", "not-upgradable" },
+    -- Same group as what the machine turns into (or replaces): a blueprint
+    -- ghost of a placer can then be built over an existing station, exactly
+    -- like vanilla containers build over each other.
+    fast_replaceable_group = group,
     minable = { mining_time = 0.5, result = result },
     max_health = 400,
     tile_width = tile_width,
@@ -84,7 +88,9 @@ for _, tier in ipairs(constants.ALL_TIERS) do
         east = station_picture("y", defines.direction.east),
         south = station_picture("x", defines.direction.south),
         west = station_picture("y", defines.direction.west),
-      }
+      },
+      -- the station group: a placer ghost can be built over a station
+      "freight-stations-station"
     )
   station_placer.circuit_connector = {
     station_connector("x", defines.direction.north),
@@ -114,7 +120,11 @@ for _, tier in ipairs(constants.ALL_TIERS) do
         east = sprite_util.balancer_picture(tier.key, "y"),
         south = sprite_util.balancer_picture(tier.key, "x"),
         west = sprite_util.balancer_picture(tier.key, "y"),
-      }
+      },
+      -- the balancer's own group (shared with its underground, see
+      -- stock-balancer.lua): a balancer placer ghost can be built over a
+      -- real balancer
+      "freight-stations-balancer-" .. tier.key
     )
     balancer_placer.deconstruction_alternative = tier.balancer_h
     -- collision_mask: the balancer's own, set in data-final-fixes.lua

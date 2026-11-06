@@ -13,6 +13,7 @@ Date: 2026-11-06
     - Hardened a handful of theoretical crash paths found in a whole-codebase review (a station replacement racing another mod's build, a failed stand-in restoration leaving a nil in a station list, and two unchecked nils in the pipette and refusal paths).
   Changes:
     - Stations can now stand beside the start of a curved rail segment: curved rails count as covering the tiles at the end where they meet the straight run (previously only straight rails counted, so any 6-tile span touching a curve was rejected).
+    - Freight stations (and their placers) are now fast-replaceable like vanilla containers: a station blueprint can be built over an existing station instead of being blocked red - the old station is mined, and the new one keeps the shared inventory via its link. A pending dismantling stand-in whose spot was taken by a rebuilt station hands its contents to that station instead of spilling them.
 ---------------------------------------------------------------------------------------------------
 Version: 0.12.9 (upstream, unmodified)
 Date: 2026-10-17

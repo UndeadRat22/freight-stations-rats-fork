@@ -272,11 +272,25 @@ local function place_pending()
         stand_in.order_deconstruction(p.force)
         unload(p.inventory, stand_in.get_inventory(CHEST), p.surface, p.position)
       else
-        -- something was built on the spot in the meantime: the station
-        -- item and the leftovers go on the ground
-        local item = constants.STATION_INFO[constants.station_name(FAMILY_OF[p.name], 1)].tier.item
-        p.surface.spill_item_stack({ position = p.position, stack = { name = item, count = 1, quality = p.quality and p.quality.name } })
-        unload(p.inventory, nil, p.surface, p.position)
+        -- something was built on the spot in the meantime. If it is a
+        -- station of this family, this was a fast replace (a blueprint or
+        -- ghost built over the station, or an immediate rebuild): the
+        -- replacement takes over the contents and the stand-in is simply
+        -- not needed. Only the station item spills - one visible pickup
+        -- instead of vanishing into the mining buffer.
+        local family = FAMILY_OF[p.name]
+        local now = geometry.find_stations(p.surface, { position = p.position }, family)[1]
+        if now then
+          unload(p.inventory, now.get_inventory(LINKED), p.surface, p.position)
+          local item = constants.STATION_INFO[constants.station_name(family, 1)].tier.item
+          p.surface.spill_item_stack({ position = p.position, stack = { name = item, count = 1, quality = p.quality and p.quality.name } })
+        else
+          -- built over by something else entirely: the station
+          -- item and the leftovers go on the ground
+          local item = constants.STATION_INFO[constants.station_name(FAMILY_OF[p.name], 1)].tier.item
+          p.surface.spill_item_stack({ position = p.position, stack = { name = item, count = 1, quality = p.quality and p.quality.name } })
+          unload(p.inventory, nil, p.surface, p.position)
+        end
       end
     else
       p.inventory.destroy()
