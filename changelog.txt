@@ -8,6 +8,7 @@ the untouched upstream history follows after the fork entries.
 Version: 0.13.0
 Date: 2026-11-06
   Bugfixes:
+    - Fixed cmd+z leaving the stations behind even after the 0.12.11 fix: every group merge or resize replaces the station entities, and the replacements were created without a player, so the engine dropped the undo record the placer swap had just set up (a script destroy removes the undo steps referencing the destroyed entity, and only create_entity with a player adds one back). Replacements now carry the station's last_user, which keeps every resized station in its builder's undo queue - ctrl+z removes the station and refunds the item. Pasted stations are still removed together when the paste's own undo item is undone.
     - Fixed "select new contents" on a blueprint containing rails shifting every rail one tile down and one right: the station-to-placer swap's half-tile offsets made the engine re-snap stored positions; blueprint entities are now stored verbatim (set_blueprint_entities with fix_positions=false).
     - Fixed the cmd+z undo handler never running (an out-of-scope loop variable made it return early), so blueprint-placed stations are again removed - with the station item refunded - when an undo clears the area they were pasted into.
     - Hardened a handful of theoretical crash paths found in a whole-codebase review (a station replacement racing another mod's build, a failed stand-in restoration leaving a nil in a station list, and two unchecked nils in the pipette and refusal paths).

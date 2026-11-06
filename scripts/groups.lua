@@ -96,6 +96,13 @@ local function replace_station(station, name, link_id, stock)
     force = force,
     quality = quality,
     create_build_effect_smoke = false,
+    -- keeps the replacement in the builder's undo queue: create_entity with
+    -- a player adds a built-entity undo action for them (confirmed against
+    -- 2.0.7x, forums.factorio.com/t=132714), and the destroy above made the
+    -- engine drop the steps that referenced the old entity. Without this,
+    -- every resize/merge severed the undo record, so cmd+z undid the
+    -- balancers and ghosts around a row but never its stations
+    player = last_user,
   })
   if not new then
     -- creation raced against something else taking the spot (another mod's
