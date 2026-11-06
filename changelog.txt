@@ -5,7 +5,7 @@ once (duplicate prototypes). Fixes and changes below are on top of 0.12.9;
 the untouched upstream history follows after the fork entries.
 
 ---------------------------------------------------------------------------------------------------
-Version: 0.12.11
+Version: 0.13.0
 Date: 2026-11-06
   Bugfixes:
     - Fixed "select new contents" on a blueprint containing rails shifting every rail one tile down and one right: the station-to-placer swap's half-tile offsets made the engine re-snap stored positions; blueprint entities are now stored verbatim (set_blueprint_entities with fix_positions=false).
