@@ -1,0 +1,8 @@
+require("prototypes.freight-station")
+require("prototypes.placer")
+require("prototypes.stock-balancer")
+require("prototypes.underground-balancer")
+require("prototypes.fluid-stations")
+require("prototypes.placeholders")
+require("prototypes.recipes")
+require("prototypes.technology")

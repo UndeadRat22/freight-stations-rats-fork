@@ -1,0 +1,110 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.12.9
+Date: 2026-10-17
+  Bugfixes:
+    - Fixed a crash when a freight station marked for deconstruction was removed instantly, for example by Ctrl+Z after placing it in the map editor. Its contents and the station item are kept.
+---------------------------------------------------------------------------------------------------
+Version: 0.12.7
+Date: 2026-10-15
+  Changes:
+    - New mod thumbnail, showing freight stations and fluid stations beside a stopped train.
+---------------------------------------------------------------------------------------------------
+Version: 0.12.5
+Date: 2026-10-15
+  Bugfixes:
+    - Fixed a station placed with a single click getting balancers to its neighbours. Only drag-building, blueprints and robots fill the gaps now, so neighbouring stations can be kept separate again.
+    - Fixed a hand-placed underground stock balancer or underground fluid balancer not turning round to face its partner.
+---------------------------------------------------------------------------------------------------
+Version: 0.12.3
+Date: 2026-10-15
+  Changes:
+    - Fluid stations hold 150,000 (three fluid wagons) instead of 25,000, and steel fluid stations 500,000 (ten fluid wagons) instead of 50,000, in line with how much the freight stations hold. Fluid already stored is kept.
+  Bugfixes:
+    - Fixed the upgrade planner offering every size and direction of every freight station, the steel stock balancers and the fluid stations as upgrade targets. Each of these items now has one entry there, like any other building.
+---------------------------------------------------------------------------------------------------
+Version: 0.12.1
+Date: 2026-10-14
+  Features:
+    - Added fluid stations: long fluid tanks that sit beside a stopped train, level with its fluid wagons, placed and snapped like freight stations. Pumps and pipes connect anywhere along a station's long sides, and a sight glass shows its level.
+    - Added fluid balancers: placed in the gap between two fluid stations, they join them into one shared fluid. Drag-building and blueprints fill the gaps automatically, and never join two different fluids.
+    - Added underground fluid balancers, which join the fluid stations on both sides of the track into one shared fluid.
+    - Added steel fluid stations, two tiles wide and holding a whole fluid wagon each, with their own steel fluid balancers and underground fluid balancers.
+    - Hovering a fluid station outlines every fluid station it shares its fluid with.
+    - New research: Fluid stations (after Freight stations and Fluid wagon) and Steel fluid stations.
+---------------------------------------------------------------------------------------------------
+Version: 0.11.3
+Date: 2026-10-13
+  Bugfixes:
+    - Fixed flipped blueprints of station rows building only some of their stations. Pasted balancers and underground stock balancers now move into the gaps between wagon slots, the way pasted stations move onto their slot, so a row blueprint also works when it isn't lined up exactly with the train stop.
+    - Fixed two underground stock balancers not linking up again after removing a third one that stood sideways between them.
+---------------------------------------------------------------------------------------------------
+Version: 0.11.1
+Date: 2026-10-13
+  Changes:
+    - Stock balancers and underground stock balancers can be walked and driven over, like belts, so a row of stations no longer has to be walked around.
+---------------------------------------------------------------------------------------------------
+Version: 0.10.3
+Date: 2026-10-13
+  Bugfixes:
+    - Fixed the game failing to load on Factorio 2.1 ("Value must be a list ... circuit_connector").
+---------------------------------------------------------------------------------------------------
+Version: 0.10.1
+Date: 2026-10-13
+  Optimizations:
+    - Linking, splitting and removing stations in large groups is two to four times faster.
+    - Marking a whole group for deconstruction, or cancelling that, no longer freezes the game for seconds: the group is changed once instead of once per station.
+    - The mod no longer runs every tick when it has nothing queued.
+  Changes:
+    - The deconstruction planner lists each tier's stations and steel stock balancers once, instead of once per group size and direction.
+  Bugfixes:
+    - Loading a save after changing mods no longer switches off recipes that other mods had unlocked by script.
+    - Blueprints in the blueprint library updated with "Select new contents" can be rotated and flipped like any other blueprint with stations.
+    - The placement guide and group outline are removed when their player leaves the game, and the guide comes back on rejoining while holding a station.
+    - Stations another mod placed without telling the game now get linked when the save is loaded after a mod change, instead of all sharing one inventory. A station copied that way no longer takes the original group's contents.
+  Compatibility:
+    - Station placement collides exactly like the station itself, including collision layers other mods add, so it can no longer be refused on ground where the station would fit.
+---------------------------------------------------------------------------------------------------
+Version: 0.9.1
+Date: 2026-10-12
+  Optimizations:
+    - The green placement guide is about twice as fast near busy train stations.
+  Changes:
+    - Mining a station from a group keeps its contents in the group when the remaining stations have room. You only get what no longer fits.
+    - Splitting a group shares items out by whole stacks, in proportion to each part's size.
+    - When robots take down part of a group, its contents move into the stations that stay, as far as they fit, instead of leaving with the dismantled part.
+    - A station marked for deconstruction leaves its group at once and becomes a plain chest holding what the group can't keep. Robots empty it like a vanilla chest and then remove it, returning the station last, instead of leaving a carpet of single items on the ground. Cancelling turns it back into a station.
+    - Loading a save re-checks every group against the stations and balancers actually placed.
+  Bugfixes:
+    - Mining a station that isn't linked to others no longer deletes its contents; they go to your inventory.
+    - Splitting a group that holds many different items no longer spills part of them on the ground.
+    - Fixed a crash when linking stations after another mod removed a balancer without telling the game.
+    - Groups stay correct when another mod destroys a station without telling the game.
+    - Steel stock balancers keep their quality when placed.
+    - The group outline while hovering a station now updates when the group changes under the cursor.
+---------------------------------------------------------------------------------------------------
+Version: 0.8.1
+Date: 2026-10-12
+  Changes:
+    - Stations and balancers are kept out of the upgrade planner.
+---------------------------------------------------------------------------------------------------
+Version: 0.7.1
+Date: 2026-10-11
+  Changes:
+    - Blueprints with stations can be pasted next to a ghost train stop.
+  Bugfixes:
+    - Fixed a crash when merging into a group.
+---------------------------------------------------------------------------------------------------
+Version: 0.6.1
+Date: 2026-10-11
+  Changes:
+    - Entity descriptions.
+---------------------------------------------------------------------------------------------------
+Version: 0.5.1
+Date: 2026-10-10
+  Changes:
+    - Items moved to the vanilla train row of the Logistics tab.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2026-10-09
+  Major Features:
+    - First release.
