@@ -80,7 +80,10 @@ end
 -- Smart pipette on one of these finds the hidden item: put the real one in
 -- the cursor instead, as pipetting its placer would.
 function ghosts.on_player_pipette(event)
-  local placeholder = event.item.name
+  local placeholder = event.item and event.item.name
+  if not placeholder then
+    return
+  end
   local item = constants.REAL_ITEM[placeholder]
   if not item then
     return

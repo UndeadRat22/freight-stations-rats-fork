@@ -217,7 +217,14 @@ local function restore_cancelled()
           compat.transfer(stand_in.get_inventory(CHEST), held)
           -- unlinked until on_stations_restored gives it a group, so
           -- nothing goes in yet
-          stations[#stations + 1] = groups.replace_station(stand_in, name)
+          -- replace_station returns nil if the restoration build failed
+          -- (spot taken in the same tick): the contents then spill via the
+          -- unload below, and no station must reach on_stations_restored --
+          -- a nil in this array would truncate its ipairs loop.
+          local restored = groups.replace_station(stand_in, name)
+          if restored then
+            stations[#stations + 1] = restored
+          end
           contents[#contents + 1] = { held = held, surface = c.surface, position = c.position, family = family }
         end
       end

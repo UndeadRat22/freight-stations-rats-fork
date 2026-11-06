@@ -343,7 +343,9 @@ end
 -- robot or script build, with a message saying why. `item` nil (a ghost)
 -- just shows the message.
 local function refuse(surface, position, item, quality, player_index, message)
-  local stack = item and { name = item, count = 1, quality = quality.name }
+  -- quality.name: every caller passes an entity/ghost quality, but this is
+  -- nil-indexed on the cheap path if one ever forgets -- default instead.
+  local stack = item and { name = item, count = 1, quality = quality and quality.name or "normal" }
   local player = player_index and game.get_player(player_index)
   if stack and not (player and player.insert(stack) > 0) then
     surface.spill_item_stack({ position = position, stack = stack })

@@ -97,6 +97,12 @@ local function replace_station(station, name, link_id, stock)
     quality = quality,
     create_build_effect_smoke = false,
   })
+  if not new then
+    -- creation raced against something else taking the spot (another mod's
+    -- build in the same tick): nothing to replace with. The caller's
+    -- bookkeeping treats nil as "member gone".
+    return nil
+  end
   if link_id then
     new.link_id = link_id
   end
