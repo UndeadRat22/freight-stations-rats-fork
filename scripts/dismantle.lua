@@ -10,6 +10,8 @@
 local constants = require("scripts.constants")
 local geometry = require("scripts.geometry")
 local groups = require("scripts.groups")
+local compat = require("scripts.compat")
+local spill = require("scripts.spill")
 
 local dismantle = {}
 
@@ -58,11 +60,16 @@ local function swap(station, name)
   return new
 end
 
--- True while at least one station in `entity`'s group is neither the entity
--- itself nor marked for deconstruction: the inventory can live there.
+-- True while at least one OTHER station in `entity`'s group is neither the
+-- entity itself nor marked for deconstruction: the inventory can live
+-- there. The entity itself does not count as its own surviving mate -- for
+-- the unmarked last-of-group mining path below it is the one being
+-- removed, and counting it used to skip the rescue entirely (stranding the
+-- shared inventory -- which the engine keeps by link id, so a later group
+-- reusing the id inherited the lost items).
 local function has_surviving_mates(entity)
   for _, s in pairs(geometry.reachable_stations(entity.surface, entity, entity.unit_number)) do
-    if not s.to_be_deconstructed() then
+    if s.unit_number ~= entity.unit_number and not s.to_be_deconstructed() then
       return true
     end
   end
@@ -72,40 +79,35 @@ end
 -- on_marked_for_deconstruction for stations.
 function dismantle.on_marked(event)
   local station = event.entity
+  -- fluid stations are linked by the engine's own fluid segments: they have
+  -- no linked inventory to rescue and no stand-in prototype, and the generic
+  -- path below would crash reading one
+  if constants.TANK_INFO[station.name] then
+    return
+  end
   if has_surviving_mates(station) then
     return
   end
   local info = constants.STATION_INFO[station.name]
   local family = info.family
-  -- slot iteration, not get_contents(): on a linked container's inventory
-  -- get_contents() reads empty even with items in the slots (measured
-  -- headless, 2.1.24)
-  local contents = {}
+  -- through a script inventory rather than name/count/quality tables: real
+  -- stacks keep spoilage and durability, which rebuilt tables would reset
   local held = station.get_inventory(LINKED)
-  for i = 1, #held do
-    local stack = held[i]
-    if stack.valid_for_read then
-      contents[#contents + 1] = { name = stack.name, count = stack.count, quality = stack.quality }
-    end
-  end
+  local temp = game.create_inventory(math.min(#held * (info.tier.stack_multiplier or 1), 65535))
+  compat.transfer(held, temp)
+  spill.inventory(station.surface, station.position, held)
   held.clear()
   local stand_in = swap(station, constants.dismantling_name(family, info.band))
   if stand_in then
     local inv = stand_in.get_inventory(CHEST)
-    for _, stack in ipairs(contents) do
-      local inserted = inv.insert(stack)
-      stack.count = stack.count - inserted
-      if stack.count > 0 then
-        stand_in.surface.spill_item_stack({ position = stand_in.position, stack = stack })
-      end
-    end
+    compat.transfer(temp, inv)
+    spill.inventory(stand_in.surface, stand_in.position, temp)
     stand_in.order_deconstruction(stand_in.force)
   else
     -- the spot was taken in the same tick: the contents go on the ground
-    for _, stack in ipairs(contents) do
-      station.surface.spill_item_stack({ position = station.position, stack = stack })
-    end
+    spill.inventory(station.surface, station.position, temp)
   end
+  temp.destroy()
 end
 
 -- on_cancelled_deconstruction for stand-ins: back to a station, linked with
@@ -117,43 +119,47 @@ function dismantle.on_cancelled(event)
     return
   end
   local family = info.family
-  local contents = {}
+  -- out through a script inventory: real stacks keep spoilage and durability
   local chest = stand_in.get_inventory(CHEST)
-  for i = 1, #chest do
-    local stack = chest[i]
-    if stack.valid_for_read then
-      contents[#contents + 1] = { name = stack.name, count = stack.count, quality = stack.quality }
-    end
-  end
+  local tier = constants.FAMILY_INFO[family].tier
+  local temp = game.create_inventory(math.min(#chest * (tier.stack_multiplier or 1), 65535))
+  compat.transfer(chest, temp)
+  spill.inventory(stand_in.surface, stand_in.position, chest)
   -- back to the plain family prototype: on_station_built links it with
   -- whatever it touches and the resize pass settles its band
   local station = swap(stand_in, family)
   if station then
     groups.on_station_built(station)
-    local inv = station.get_inventory(LINKED)
-    for _, stack in ipairs(contents) do
-      local inserted = inv.insert(stack)
-      stack.count = stack.count - inserted
-      if stack.count > 0 then
-        station.surface.spill_item_stack({ position = station.position, stack = stack })
-      end
-    end
+    -- the station may have been swapped onto another size band while its
+    -- group settled (the same hazard dispatch_built re-finds for): whatever
+    -- stands there now receives the contents
+    local now = station.surface.find_entities_filtered({ position = station.position, type = "linked-container" })[1]
+    local receiver = now or station
+    local inv = receiver.get_inventory(LINKED)
+    compat.transfer(temp, inv)
+    spill.inventory(receiver.surface, receiver.position, temp)
   else
-    for _, stack in ipairs(contents) do
-      stand_in.surface.spill_item_stack({ position = stand_in.position, stack = stack })
-    end
+    spill.inventory(stand_in.surface, stand_in.position, temp)
   end
+  temp.destroy()
 end
 
 -- on_player_mined_entity / on_robot_mined_entity / on_entity_died for
 -- stations: the last member of a group mined carries the inventory, which
 -- goes to the mining buffer/loot, or the ground when there is none.
+-- Deaths pass no inventory at all: a death's loot inventory has nothing to
+-- collect it, so contents inserted there were unrecoverable (measured --
+-- lab EDGE 10d) -- spilling them keeps them pickable instead.
 function dismantle.on_station_mined(entity, loot_inventory)
+  if constants.TANK_INFO[entity.name] then
+    return
+  end
   if has_surviving_mates(entity) then
     return
   end
   local surface, position = entity.surface, entity.position
   local inv = entity.get_inventory(LINKED)
+  local index = 0
   for i = 1, #inv do
     local stack = inv[i]
     if stack.valid_for_read then
@@ -162,7 +168,8 @@ function dismantle.on_station_mined(entity, loot_inventory)
         stack.count = stack.count - inserted
       end
       if stack.count > 0 then
-        surface.spill_item_stack({ position = position, stack = stack })
+        index = index + 1
+        spill.stack(surface, position, stack, index)
       end
     end
   end

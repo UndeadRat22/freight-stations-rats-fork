@@ -15,6 +15,7 @@
 -- dismantling stand-ins kept their prototype names, so they need no pass.
 local constants = require("scripts.constants")
 local compat = require("scripts.compat")
+local spill = require("scripts.spill")
 
 local migrate = {}
 
@@ -59,6 +60,10 @@ end
 local function migrate_group(surface, members)
   local new_id = fresh_link_id()
   local first = members[1]
+  -- captured up front: a re-issued deconstruction mark swaps members for
+  -- stand-ins mid-migration, which invalidates the handles
+  local first_surface = first.entity.surface
+  local first_position = first.entity.position
   local old_inventory = first.entity.get_inventory(LINKED)
   -- through a script inventory: normal stack sizes, so a steel inventory
   -- needs stack_multiplier times the slots to be held whole
@@ -75,6 +80,7 @@ local function migrate_group(surface, members)
     local s = m.entity
     if s.valid then
       local position, force, quality, last_user, health = s.position, s.force, s.quality, s.last_user, s.health
+      local deconstruct = s.to_be_deconstructed()
       s.destroy()
       local new = surface.create_entity({
         name = target,
@@ -90,21 +96,32 @@ local function migrate_group(surface, members)
           new.last_user = last_user
         end
         new.link_id = new_id
+        if deconstruct then
+          new.order_deconstruction(force)
+        end
         created[#created + 1] = new
       end
     end
   end
 
   if created[1] then
-    local target = created[1].get_inventory(LINKED)
-    local spill_at = 1
-    for _, stack in ipairs(stacks_of(temp)) do
-      local inserted = target.insert(stack)
-      stack.count = stack.count - inserted
-      if stack.count > 0 then
-        -- spread the overflow around the group's stations
-        surface.spill_item_stack({ position = created[spill_at].position, stack = stack })
-        spill_at = (spill_at % #created) + 1
+    -- a re-issued deconstruction mark fires the mod's own dismantle flow,
+    -- which swaps the fresh station for its stand-in before we get here:
+    -- pour into whatever stands at the first member's position now
+    local receiver = first_surface.find_entities_filtered({ position = first_position, type = { "linked-container", "container" } })[1]
+    if receiver then
+      local inv = receiver.get_inventory(receiver.type == "linked-container" and LINKED or defines.inventory.chest)
+      for _, stack in ipairs(stacks_of(temp)) do
+        local inserted = inv.insert(stack)
+        stack.count = stack.count - inserted
+        if stack.count > 0 then
+          -- spread the overflow around the group's stations
+          spill.stack(receiver.surface, receiver.position, stack)
+        end
+      end
+    else
+      for _, stack in ipairs(stacks_of(temp)) do
+        spill.stack(first_surface, first_position, stack)
       end
     end
   end

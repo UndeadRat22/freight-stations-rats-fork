@@ -58,15 +58,28 @@ local function place_balancer(surface, position, balancer, direction, force, pla
   -- paid from the builder's inventory (free in cheat mode). Without a
   -- builder, or without the item, nothing is placed: no ghost by proxy,
   -- the connection is simply not made until one is built or pasted there.
-  if player and (player.cheat_mode or player.remove_item({ name = BALANCER_ITEM[balancer], count = 1 }) > 0) then
-    surface.create_entity({
-      name = balancer,
-      position = position,
-      direction = direction,
-      force = force,
-      player = player,
-      raise_built = true,
-    })
+  local charged = false
+  if not player then
+    return
+  end
+  if not player.cheat_mode then
+    charged = player.remove_item({ name = BALANCER_ITEM[balancer], count = 1 }) > 0
+    if not charged then
+      return
+    end
+  end
+  local created = surface.create_entity({
+    name = balancer,
+    position = position,
+    direction = direction,
+    force = force,
+    player = player,
+    raise_built = true,
+  })
+  if not created and charged then
+    -- the spot was taken in the same tick, between the placement check and
+    -- the build: hand the item back rather than eat it
+    player.insert({ name = BALANCER_ITEM[balancer], count = 1 })
   end
 end
 

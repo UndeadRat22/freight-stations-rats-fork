@@ -5,6 +5,27 @@ once (duplicate prototypes). Fixes and changes below are on top of 0.12.9;
 the untouched upstream history follows after the fork entries.
 
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.1
+Date: 2026-11-06
+  Bugfixes:
+    - Fixed silently destroyed items in normal play: the band-swap pass checked only its hash-ordered first member, so a station built without crossing a band boundary (the fourth station of a band-4 row, say) stayed on the band-1 prototype - and since link ids are per prototype, it did not even share the group's inventory. Items inserted through such a member sat in private slots the next real swap destroyed. The swap now scans every member, collects every member's inventory, and merges whatever a stranded member is holding into the group.
+    - Fixed large overflow spills destroying part of the items (12-36% of a full group's overflow vanished in the lab): spills now spread over a deterministic grid and verify what actually landed, retrying farther out. The engine drops one-item piles and quietly discards what it cannot place past roughly a hundred piles per point.
+    - Fixed a station dying (biters, artillery) losing the whole group inventory: a death's loot inventory has nothing to collect it, so contents inserted there were unrecoverable. They now spill on the ground, pickable.
+    - Fixed mining an unmarked last-of-group station stranding the shared inventory (the engine keeps it by link id, so a later group reusing the id inherited the lost items): the survivor check no longer counts the removed station as its own surviving mate.
+    - Fixed event-less removals (undo, a plain script destroy - neither raises an event) leaving two pieces that still share one inventory: the next build near one piece poured the entire shared inventory into the smaller band, teleporting the items and spilling the overflow. A build now detects holders outside its own component and runs the normal split semantics instead.
+    - Fixed building, marking or mining a fluid station crashing the mod: they were routed through the linked-inventory group code, which cannot touch storage-tanks. Fluid stations now only use auto-connect and the engine's own fluid segments, as designed.
+    - Fixed cancelling a dismantling stand-in that still had group-mates crashing on the stale entity reference (the rebuild pass may have swapped the station onto its band prototype mid-handler); whatever stands there now receives the contents.
+    - Fixed the dismantle mark/cancel round-trip resetting item state: stacks move through a script inventory as real stacks, keeping item health, instead of being rebuilt as name/count/quality tables.
+    - Fixed equal splits keeping the items with a hash-order-dependent side: ties now go to the piece with the lowest (y, x) anchor, deterministic on every client.
+    - Fixed one-way walk edges between diagonally adjacent stations of different tiers (one is wider), which made a split's keeper depend on which side the walk started from: probes now require the centres to sit on the same line.
+    - Fixed legacy migration dropping pending deconstruction marks; a kept mark now flows into the mod's own dismantle flow, and migration pours the old inventory into the station or stand-in that actually stands there.
+    - Fixed stations whose build event was missed (another mod's create_entity, a script fast-replace) losing the items they held privately when they joined a group: unlinked stations are drained into the group first, since assigning a link id over held items destroys them.
+    - Fixed auto-connect eating the balancer item when the build raced another mod in the same tick: the item is refunded if the placement fails after the charge.
+    - Fixed pressing R on a placed stock balancer turning it across its row, silently disconnecting its stations on the next walk: the turn is reverted (blueprint pastes keep their direction).
+    - Hardened the theoretical band-swap path where every entity recreation fails: the collected inventory spills around the group's last position instead of being destroyed with the temp inventory.
+  Changes:
+    - info.json no longer claims saves from 0.12.x/0.13.x do not migrate (they do, since 1.1.0).
+---------------------------------------------------------------------------------------------------
 Version: 1.1.0
 Date: 2026-11-06
   Changes:

@@ -245,11 +245,21 @@ local function same_tier_rule(a, b)
 end
 
 -- Every collinear entity directly touching `entity`'s ends, tier or not.
+-- The centre must sit on the port's line: two stations of different tiers
+-- (one is wider) can overlap a probe window diagonally, and a one-way edge
+-- there made connected components depend on which side a walk started
+-- from. Collinear neighbours sit at lateral offset exactly 0.
 local function touching(surface, entity, exclude_unit_number)
   local found = {}
   for _, port in ipairs(ports_of(entity)) do
     local candidates = surface.find_entities_filtered({ area = probe_area(port), type = RELEVANT_TYPES })
     for _, candidate in ipairs(candidates) do
+      local lateral
+      if port.axis == "x" then
+        lateral = math.abs(candidate.position.y - port.y)
+      else
+        lateral = math.abs(candidate.position.x - port.x)
+      end
       if
         candidate.valid
         and RELEVANT[candidate.name]
@@ -258,6 +268,7 @@ local function touching(surface, entity, exclude_unit_number)
         -- a station must share the probing axis to count as a real collinear
         -- neighbour; a balancer must connect along that axis too.
         and connects_along(candidate, port.axis)
+        and lateral < EPSILON
       then
         found[candidate.unit_number] = candidate
       end

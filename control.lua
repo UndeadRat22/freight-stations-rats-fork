@@ -61,6 +61,13 @@ local function dispatch_built(entity, player_index)
     return
   end
   if geometry.is_station(entity.name) then
+    -- fluid stations are linked by the engine's own fluid segments: no
+    -- group bookkeeping for them (writing a link id on a storage-tank
+    -- throws), but auto-connect still applies
+    if constants.TANK_INFO[entity.name] then
+      connect.on_station_built(entity, player_index)
+      return
+    end
     -- the station may be swapped onto another size band while its group
     -- settles (groups.lua resize); re-find what stands there before
     -- auto-connect probes around it
@@ -100,6 +107,9 @@ script.on_event(defines.events.on_entity_cloned, on_cloned, BUILD_FILTER)
 -- Removal: player mining and entity death provide an inventory (buffer or
 -- loot) for a removed station's group to empty into; robots, script
 -- destroys and cancelled clones give nothing, so it falls to the ground.
+-- Deaths pass no inventory either: a death's loot inventory has nothing to
+-- collect it, so contents inserted there were unrecoverable (measured --
+-- lab EDGE 10d); spilled on the ground they stay pickable.
 local function on_removed(event, inventory)
   local entity = event.entity
   if not entity then
@@ -110,7 +120,9 @@ local function on_removed(event, inventory)
   -- inventory does not, so the station contents only rescue on the
   -- events where it is still valid (mined, died)
   local name = entity.name
-  if geometry.is_station(name) and entity.valid then
+  -- fluid stations have no linked inventory and no group: the generic path
+  -- would crash reading one
+  if geometry.is_station(name) and entity.valid and not constants.TANK_INFO[name] then
     dismantle.on_station_mined(entity, inventory)
   end
   if not constants.TANK_INFO[name] then
@@ -127,7 +139,7 @@ script.on_event(defines.events.on_robot_mined_entity, function(event)
 end, BUILD_FILTER)
 
 script.on_event(defines.events.on_entity_died, function(event)
-  on_removed(event, event.loot)
+  on_removed(event, nil)
 end, BUILD_FILTER)
 
 script.on_event(defines.events.script_raised_destroy, function(event)
@@ -141,15 +153,24 @@ script.on_event(defines.events.on_marked_for_deconstruction, dismantle.on_marked
 script.on_event(defines.events.on_cancelled_deconstruction, dismantle.on_cancelled, name_filter(dismantle.names()))
 
 -- Only underground balancers (and the wide fluid balancer, which needs
--- nothing) can be rotated or flipped once placed: stations and regular
--- balancers hold their direction. Neither event takes a filter, so check
--- the name here.
+-- nothing) may change direction once placed. Undergrounds handle their own
+-- rotation below; regular balancers hold their row direction: a quarter-turn
+-- would face one across the row and silently disconnect its stations on the
+-- next walk, so it is turned straight back. Neither event takes a filter,
+-- so check the name here.
 script.on_event(defines.events.on_player_rotated_entity, function(event)
   local entity = event.entity
   if entity and entity.valid and geometry.is_underground(entity.name) then
     underground.on_rotated(entity, event.previous_direction, event.player_index)
   elseif entity and entity.valid and tanks.is_underground(entity.name) then
     tanks.on_underground_rotated(entity, event.previous_direction, event.player_index)
+  elseif entity and entity.valid and geometry.is_balancer(entity.name) then
+    -- as with undergrounds, a blueprint paste's direction is deliberate and
+    -- must win (2.1 raises this event for those)
+    local player = event.player_index and game.get_player(event.player_index)
+    if not (player and player.is_cursor_blueprint()) then
+      entity.direction = event.previous_direction
+    end
   end
 end)
 
