@@ -10,7 +10,7 @@ tables are avoided.
 
 # Freight Stations (rat's fork)
 
-A fork of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-stations) (MIT) with fixes for three blueprint/placement problems, verified headless against Factorio 2.1.24. Same entities, items, recipes and technologies as the original, so saves, blueprints and books carry over untouched.
+A fork of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-stations) (MIT) with fixes for three blueprint/placement problems. Same entities, items, recipes and technologies as the original, so saves, blueprints and books carry over untouched.
 
 **This fork replaces the original; it does not add to it.** The two mods declare each other incompatible, so the game refuses to load with both enabled. If Ragingart takes the fixes upstream, drop this fork and nothing of yours changes: every prototype name is identical.
 
@@ -41,4 +41,6 @@ Curved rails now count for the tiles where they still run straight: a curved rai
 
 Every fix is verified with a headless engine suite (scenario + driver mod, `make test` in the repository): blueprint capture round-trips byte-stable, all flip combinations (iron and steel, horizontal and vertical, raw ±1 and pre-aligned pastes) build complete rows with zero balancer/station overlaps, and the curve-adjacent placement that used to be rejected is now accepted while positions past the curve stay rejected. A separate whole-codebase robustness pass hardened four theoretical crash paths (nil-index and nil-in-array cases) and reviewed every division and table index in the runtime code.
 
-Upstream history is kept in the changelog, clearly marked. If you find a problem, check whether it exists in the original first: fixes belong upstream where the bugs live, and the maintainer is responsive.
+Upstream history is kept in the changelog, clearly marked. If you find a problem, feel free to report it both here and in the original mod. I'll maintain this as I play.
+
+Built with the help of Kimchi coding agent.
