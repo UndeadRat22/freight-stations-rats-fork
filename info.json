@@ -8,5 +8,5 @@
     "base >= 2.1.0",
     "! freight-stations"
   ],
-  "description": "Fork of Ragingart's Freight Stations with fixes: no rail shift on select-new-contents, flipped/shifted pastes no longer strand balancer ghosts inside stations, stations can sit beside the start of curved rail. Uses the same entity names, so saves migrate over. Do not run alongside the original."
+  "description": "Fork of Ragingart's Freight Stations with fixes: no rail shift on select-new-contents, no rail placement rule or wagon-slot snapping (stations build anywhere, like vanilla containers), balancer ghosts stranded by flipped pastes are cleaned up instead of stuck forever. Uses the same entity names, so saves migrate over. Do not run alongside the original."
 }

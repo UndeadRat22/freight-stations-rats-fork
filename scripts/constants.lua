@@ -11,19 +11,6 @@ constants.GAP = 1 -- tile between consecutive stations, filled by a balancer
 -- inserters on both sides leave 6. 8 gives some room beyond that.
 constants.UNDERGROUND_MAX_GAP = 8
 
--- Most empty tiles allowed between a station and the parallel track it
--- serves (scripts/rails.lua): 1 fits an inserter, 2 a loader pair.
-constants.MAX_RAIL_GAP = 2
-
--- Empty tiles between a tank and the track that a pump fills (a pump is
--- 1 x 2 and only reaches a fluid wagon from right beside the rail). The
--- placement guide only suggests this distance for tanks.
-constants.PUMP_GAP = 2
-
--- A station must line up with one of the first this-many carriages of a
--- train stopped at a train stop on its track (scripts/rails.lua).
-constants.MAX_TRAIN_CARS = 12
-
 -- Where the real station sits relative to its station placer's position,
 -- per placer direction: half a tile toward the placer's local west, away
 -- from the gap tile (prototypes/placer.lua). `defines` exists in both stages.

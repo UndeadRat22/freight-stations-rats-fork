@@ -1,26 +1,31 @@
 # Freight Stations (rat's fork)
 
 Fork of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-stations)
-(MIT) with fixes for three problems found while investigating blueprint/paste
-behaviour. Same entities, items, recipes and technologies as the original, so
+(MIT) with fixes for the blueprint/paste problems found while investigating
+them. Same entities, items, recipes and technologies as the original, so
 saves and blueprints carry over. But the two mods declare each other
 incompatible (`! freight-stations` in info.json), so the game refuses to load
 with both enabled. Version is bumped to 0.12.11; upstream history is kept in
 `changelog.txt`.
 
-## What's fixed
+## What's changed
 
 1. **Rail shift on "select new contents"**: a blueprint containing rails
    shifted every rail one tile down and one right. Blueprint entities are now
    stored verbatim (`set_blueprint_entities(entities, false)`).
-2. **Flipped pastes stranding balancer ghosts inside stations**: a gap ghost
-   with no gap (flipped/shifted paste, past the row's end) is now refused
-   after one retry instead of sitting unbuildable forever; the item comes back.
-3. **No placement beside curved rail starts**: curved rails now count toward
-   the coverage predicate for the tiles where they still run level with the
-   straight run.
+2. **No rail placement rule**: stations and tanks build exactly where you
+   place them, like vanilla containers. The wagon-slot snapping, the
+   placement guide and the ghost retry queue are gone with it.
+3. **Flipped pastes**: flipping a blueprint lands its balancer ghosts one
+   tile inside the stations (the engine can't mirror the placer's one-sided
+   footprint). Balancer ghosts inside a built station's footprint are
+   removed instead of sitting unbuildable forever, and auto-connect fills
+   the real gaps. Known issue, tracked: a balancer built before its station
+   can still strand that station's ghost.
 
-Plus a whole-codebase robustness pass (division/index/nil hardening).
+Plus fast-replaceable stations (a station blueprint builds over an existing
+station), working cmd+z for pasted stations, and a whole-codebase robustness
+pass (division/index/nil hardening).
 
 ## Development
 

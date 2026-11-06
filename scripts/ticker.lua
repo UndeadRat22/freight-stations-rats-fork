@@ -4,11 +4,10 @@
 -- re-registers it from the same queues the server saved.
 local ticker = {}
 
--- storage keys of the queues the handler works through: station ghosts
--- waiting for their train stop (scripts/placer.lua), stations marked for
+-- storage keys of the queues the handler works through: stations marked for
 -- deconstruction, stand-ins to place and cancelled stand-ins to turn back
 -- (scripts/dismantle.lua)
-local QUEUES = { "pending_ghosts", "marked_stations", "pending_dismantles", "cancelled_stand_ins" }
+local QUEUES = { "marked_stations", "pending_dismantles", "cancelled_stand_ins" }
 
 local handler
 

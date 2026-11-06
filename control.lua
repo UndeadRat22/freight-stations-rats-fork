@@ -5,7 +5,6 @@ local placer = require("scripts.placer")
 local blueprint = require("scripts.blueprint")
 local underground = require("scripts.underground")
 local highlight = require("scripts.highlight")
-local guide = require("scripts.guide")
 local dismantle = require("scripts.dismantle")
 local ticker = require("scripts.ticker")
 local tanks = require("scripts.tanks")
@@ -18,10 +17,8 @@ local function init_storage()
   storage.pending_build_mode = storage.pending_build_mode or {}
   storage.highlights = storage.highlights or {}
   storage.highlight_keys = storage.highlight_keys or {}
-  storage.guides = storage.guides or {}
   storage.gap_reservations = storage.gap_reservations or {}
   storage.last_drag_tick = storage.last_drag_tick or {}
-  storage.pending_ghosts = storage.pending_ghosts or {}
   storage.swapped_stations = storage.swapped_stations or {}
   storage.pending_dismantles = storage.pending_dismantles or {}
   storage.marked_stations = storage.marked_stations or {}
@@ -83,19 +80,14 @@ end
 
 local function on_built(event)
   local entity = event.entity
-  if entity and entity.valid and entity.name == "entity-ghost" and ghosts.is_swapped(entity.ghost_name) then
-    -- one that robots can't build (scripts/ghosts.lua); a player's paste
-    -- then snaps like any placer ghost, others stay where they are
-    entity = ghosts.to_placer(entity)
-    if event.name ~= defines.events.on_built_entity then
-      return
-    end
-  end
   if entity and entity.valid and entity.name == "entity-ghost" then
-    if placer.is_gap_ghost(entity.ghost_name) then
-      placer.on_gap_ghost_built(entity, event.player_index)
-    else
-      placer.on_ghost_built(entity, event.player_index)
+    -- Ghosts of everything only built through a placer (station sizes,
+    -- tanks, wide balancers) are swapped for ghosts of that placer, which
+    -- robots can actually build (scripts/ghosts.lua). Everything else a
+    -- player pastes stays exactly where it was placed: stations build
+    -- wherever their placer ghost was.
+    if ghosts.is_swapped(entity.ghost_name) then
+      ghosts.to_placer(entity)
     end
     return
   end
@@ -124,24 +116,7 @@ for _, event_id in ipairs(build_events) do
   script.on_event(event_id, on_built, ghost_filter(name_filter(BUILD_NAMES), ghosts.names()))
 end
 
--- Players also get the station placer ghosts they place (by hand, drag or
--- blueprint), to snap them to their wagon slot right away, see
--- placer.on_ghost_built, and the ghosts of balancers and undergrounds, to
--- snap them to the gap between two slots (placer.on_gap_ghost_built).
-local player_ghosts = {}
-for _, tier in ipairs(constants.ALL_TIERS) do
-  player_ghosts[#player_ghosts + 1] = tier.placer
-end
-for _, name in ipairs(placer.gap_ghost_names()) do
-  if not ghosts.is_swapped(name) then
-    player_ghosts[#player_ghosts + 1] = name
-  end
-end
-for _, name in ipairs(ghosts.names()) do
-  player_ghosts[#player_ghosts + 1] = name
-end
-local player_build_filter = ghost_filter(name_filter(BUILD_NAMES), player_ghosts)
-script.on_event(defines.events.on_built_entity, on_built, player_build_filter)
+script.on_event(defines.events.on_built_entity, on_built, ghost_filter(name_filter(BUILD_NAMES), ghosts.names()))
 
 script.on_event(defines.events.on_entity_cloned, on_cloned, name_filter(BUILD_NAMES))
 
@@ -293,11 +268,9 @@ script.on_configuration_changed(on_configuration_changed)
 
 script.on_event(defines.events.on_selected_entity_changed, highlight.on_selected_entity_changed)
 
--- Station ghosts from a paste that had no train stop yet (placer.retry_ghosts),
--- and stations marked for deconstruction last tick (dismantle.on_tick).
--- Registered only while either has queued work (scripts/ticker.lua).
+-- Stations marked for deconstruction last tick (dismantle.on_tick).
+-- Registered only while there is queued work (scripts/ticker.lua).
 ticker.set_handler(function()
-  placer.retry_ghosts()
   dismantle.on_tick()
   ticker.update()
 end)
@@ -308,29 +281,17 @@ script.on_nth_tick(60, function(event)
   placer.expire_reservations(event.tick)
 end)
 
--- Placement guide while holding a station (scripts/guide.lua).
-script.on_event(defines.events.on_player_cursor_stack_changed, guide.on_cursor_changed)
+-- Mouseover group outline refresh (scripts/highlight.lua).
 script.on_nth_tick(30, function()
-  guide.refresh_all()
   highlight.refresh_all()
 end)
 
--- Guide and outline are drawn for one player only: drop them when that
--- player leaves, and redraw the guide if they come back holding a station.
+-- The outline is drawn for one player only: drop it when that player leaves.
 script.on_event(defines.events.on_player_left_game, function(event)
-  guide.clear(event.player_index)
   highlight.clear(event.player_index)
 end)
 
-script.on_event(defines.events.on_player_joined_game, function(event)
-  local player = game.get_player(event.player_index)
-  if player then
-    guide.update(player)
-  end
-end)
-
 script.on_event(defines.events.on_player_removed, function(event)
-  guide.clear(event.player_index)
   highlight.clear(event.player_index)
   placer.forget_player(event.player_index)
 end)
