@@ -1,12 +1,16 @@
 {
   "name": "freight-stations-rats-fork",
   "version": "1.0.0",
-  "title": "Freight Stations (rat's fork)",
-  "author": "Ragingart (fork maintained by rat)",
+  "title": "Freight Stations (UndeadRat22 fork)",
+  "author": "UndeadRat22",
+  "contributors": [
+    "Ragingart (original author)",
+    "rat"
+  ],
   "factorio_version": "2.1",
   "dependencies": [
     "base >= 2.1.0",
     "! freight-stations"
   ],
-  "description": "Fork of Ragingart's Freight Stations with fixes: no rail shift on select-new-contents, no rail placement rule or wagon-slot snapping (stations build anywhere, like vanilla containers), balancer ghosts stranded by flipped pastes are cleaned up instead of stuck forever. Uses the same entity names, so saves migrate over. Do not run alongside the original."
+  "description": "Ragingart's Freight Stations rebuilt around a minimal core: long containers and tanks beside your trains, sharing one fixed-size inventory per group and joined by balancers. Stations build anywhere, undo and blueprints work natively, and flipped pastes build the exact mirrored row. Breaking: saves from 0.12.x/0.13.x do not migrate. Do not run alongside the original."
 }
