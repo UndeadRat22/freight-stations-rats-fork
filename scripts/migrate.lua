@@ -66,6 +66,9 @@ local function migrate_group(surface, members)
   local temp = game.create_inventory(math.min(#old_inventory * (tier.stack_multiplier or 1), 65535))
   compat.transfer(old_inventory, temp)
   old_inventory.clear()
+  -- the group becomes the size band holding its member count: capacity
+  -- rounds up, so the old inventory always fits
+  local target = constants.station_name(first.base, constants.band_for(tier, #members))
 
   local created = {}
   for _, m in ipairs(members) do
@@ -74,7 +77,7 @@ local function migrate_group(surface, members)
       local position, force, quality, last_user, health = s.position, s.force, s.quality, s.last_user, s.health
       s.destroy()
       local new = surface.create_entity({
-        name = m.base,
+        name = target,
         position = position,
         force = force,
         quality = quality,

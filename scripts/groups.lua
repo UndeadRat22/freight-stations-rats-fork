@@ -14,6 +14,7 @@
 local constants = require("scripts.constants")
 local geometry = require("scripts.geometry")
 local compat = require("scripts.compat")
+local wires = require("scripts.wires")
 
 local groups = {}
 
@@ -21,14 +22,6 @@ local function fresh_link_id()
   local id = storage.next_link_id
   storage.next_link_id = id + 1
   return id
-end
-
-local function count(t)
-  local n = 0
-  for _ in pairs(t) do
-    n = n + 1
-  end
-  return n
 end
 
 -- The stacks of `inventory` as a list. Slot iteration, not get_contents():
@@ -43,6 +36,96 @@ local function stacks_of(inventory)
     end
   end
   return list
+end
+
+local resize -- forward declaration: unify_onto calls it at the end
+
+-- Capacity growth: a group's inventory is its prototype's fixed size, so
+-- the members are swapped onto the size band's prototype whenever the
+-- group's band changes (powers of two, scripts/constants.lua - rare,
+-- unlike the old mod's exact sizes replaced on every change). The link id
+-- carries over: ids are unique per group, so no other group holds it on any
+-- prototype. Items pour from the old band's inventory into the new one:
+-- growing always fits, shrinking (a member left) spills the overflow around
+-- the members. Wires, quality, health, last user and a pending
+-- deconstruction order carry over; create_entity with a player keeps the
+-- replacement in the builder's undo queue.
+resize = function(list)
+  if not next(list) then
+    return
+  end
+  local first = list[1]
+  if not first.valid then
+    return
+  end
+  local info = constants.STATION_INFO[first.name]
+  if not info then
+    return
+  end
+  local band = constants.band_for(info.tier, #list)
+  local target = constants.station_name(info.family, band)
+  if first.name == target then
+    return
+  end
+  -- collect the old inventory through a script inventory before any swap
+  local old_inventory = first.get_inventory(defines.inventory.linked_container_main)
+  local temp = game.create_inventory(math.min(#old_inventory * (info.tier.stack_multiplier or 1), 65535))
+  compat.transfer(old_inventory, temp)
+  old_inventory.clear()
+
+  local created = {}
+  for _, s in ipairs(list) do
+    if s.valid and s.name ~= target then
+      local surface, position, force = s.surface, s.position, s.force
+      local health, quality, last_user = s.health, s.quality, s.last_user
+      local link_id = s.link_id
+      local deconstruct = s.to_be_deconstructed()
+      local saved_wires = wires.save(s)
+      s.destroy()
+      local new = surface.create_entity({
+        name = target,
+        position = position,
+        force = force,
+        quality = quality,
+        create_build_effect_smoke = false,
+        player = last_user,
+      })
+      if new then
+        new.health = health
+        if last_user then
+          new.last_user = last_user
+        end
+        new.link_id = link_id
+        wires.restore(new, saved_wires)
+        if deconstruct then
+          new.order_deconstruction(force)
+        end
+        created[#created + 1] = new
+      end
+    end
+  end
+
+  if created[1] then
+    local t = created[1].get_inventory(defines.inventory.linked_container_main)
+    local spill_at = 1
+    for _, stack in ipairs(stacks_of(temp)) do
+      local inserted = t.insert(stack)
+      stack.count = stack.count - inserted
+      if stack.count > 0 then
+        created[1].surface.spill_item_stack({ position = created[spill_at].position, stack = stack })
+        spill_at = (spill_at % #created) + 1
+      end
+    end
+  end
+  temp.destroy()
+end
+
+local function count(t)
+  local n = 0
+  for _ in pairs(t) do
+    n = n + 1
+  end
+  return n
 end
 
 -- Gives every station in `list` (an array of one family) `target` as their
@@ -86,6 +169,7 @@ local function unify_onto(list, target, kept_elsewhere)
       s.link_id = target
     end
   end
+  resize(list)
 end
 
 -- Stations of `stations` ({unit_number = LuaEntity}) grouped into arrays by

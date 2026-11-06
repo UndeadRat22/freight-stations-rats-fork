@@ -16,10 +16,13 @@ so the game refuses to load with both enabled.
   machines, no entity swapping. Undo, blueprints, ghosts, pipette and
   fast-replace are all engine-native, and flipping a blueprint row builds
   the exact mirrored row.
-- **One fixed-size inventory per group.** Stations joined by balancers share
-  a single linked inventory (iron: six chests' worth; steel: double stack
-  sizes). Members add access points, not space, which is what removes the
-  whole resize/replace machinery the original needed for growing windows.
+- **One shared inventory per group, in size bands.** Stations joined by
+  balancers share a single linked inventory (iron: six chests' worth; steel:
+  double stack sizes), and the capacity grows with the group: whenever the
+  member count crosses a power-of-two band (capped at the tier's max), the
+  members are swapped onto that band's prototype - rare, and wires, quality,
+  health and the shared link id carry over each swap. The window shows the
+  band's capacity, rounded up from the member count.
 - **The world is the only state.** Group membership is walked live from the
   map and link ids live on the entities: no bookkeeping storage, nothing to
   desync. Merging two groups pours the loser's items into the survivor's;
@@ -64,14 +67,12 @@ items in the slots, so all linked-inventory reads iterate slots; and
 
 ## Migrating from 0.12.x / 0.13.x
 
-The old size-prototype stations convert to the fixed-size stations on the
+The old size-prototype stations convert to the matching size band on the
 first load (their prototypes stay in the mod, hidden, so the entities
 survive loading). Every old group becomes one new group with a fresh link
 id; quality, health and last user carry over, circuit wires do not. The old
-group inventory is poured into the new fixed capacity, and what exceeds
-it spills around the group's stations - a 50-station group held 50x the
-slots, the new group holds one fixed share, so trim large groups down
-before switching if you care where the overflow lands.
+group inventory is poured into the new band - bands round up, so it always
+fits.
 
 Credits: Ragingart's original Freight Stations (MIT) for the sprites,
 recipes, technologies and the whole idea. Built with the help of the Kimchi

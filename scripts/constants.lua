@@ -113,10 +113,43 @@ for _, tier in ipairs(constants.TIERS) do
   constants.UNDERGROUND_TIER[tier.underground] = tier
 end
 
--- station prototype name -> { tier, family, axis }. A family is one tier +
--- axis (tier.station_h / tier.station_v); only stations of one family share
--- an inventory (a link_id is per prototype, so different prototypes could
--- never share one anyway).
+-- One station prototype per (tier, axis, size band): capacity grows with
+-- the group, rounded up to a power of two and capped at the tier's
+-- max_group. Band 1 is the plain family name; larger bands append -sN.
+-- inventory_size is fixed per prototype (the engine offers no runtime way
+-- to grow it), so crossing a band swaps the members onto the next band's
+-- prototype -- rare, unlike the old mod's one-prototype-per-exact-size
+-- replacement on every membership change.
+local BAND_LISTS = {
+  iron = { 1, 2, 4, 8, 16, 32, 64, 100 },
+  steel = { 1, 2, 4, 8, 16, 32, 50 },
+}
+constants.BANDS = {}
+for _, tier in ipairs(constants.TIERS) do
+  constants.BANDS[tier.key] = BAND_LISTS[tier.key]
+end
+
+-- The smallest band that holds `count` stations (capped at the last band:
+-- members past the tier's max_group add no space, like the old mod).
+function constants.band_for(tier, count)
+  local bands = constants.BANDS[tier.key]
+  local n = math.min(count, bands[#bands])
+  for _, band in ipairs(bands) do
+    if band >= n then
+      return band
+    end
+  end
+  return bands[#bands]
+end
+
+function constants.station_name(family, band)
+  if band <= 1 then
+    return family
+  end
+  return family .. "-s" .. band
+end
+
+-- station prototype name -> { tier, family, axis, band }
 constants.STATION_INFO = {}
 -- family -> { tier, axis }
 constants.FAMILY_INFO = {}
@@ -126,10 +159,17 @@ for _, tier in ipairs(constants.ALL_TIERS) do
   for _, pair in ipairs({ { tier.station_h, "x" }, { tier.station_v, "y" } }) do
     local family, axis = pair[1], pair[2]
     local info = { tier = tier, family = family, axis = axis }
-    constants.STATION_INFO[family] = info
     constants.FAMILY_INFO[family] = info
     if tier.fluid then
       constants.TANK_INFO[family] = info
+    end
+    for _, band in ipairs(tier.fluid and { 1 } or constants.BANDS[tier.key]) do
+      constants.STATION_INFO[constants.station_name(family, band)] = {
+        tier = tier,
+        family = family,
+        axis = axis,
+        band = band,
+      }
     end
   end
 end
@@ -137,9 +177,12 @@ end
 -- A plain container that stands in for a station marked for deconstruction
 -- while it is the last of its group, holding the group's contents so robots
 -- empty it one load at a time like a vanilla chest (linked containers
--- never get emptied that way). One station's slots: the most a group
--- inventory can hold. See scripts/dismantle.lua.
-function constants.dismantling_name(family)
+-- never get emptied that way). Sized to the station's band: the most a
+-- group inventory can hold. See scripts/dismantle.lua.
+function constants.dismantling_name(family, band)
+  if band and band > 1 then
+    return family .. "-dismantling-s" .. band
+  end
   return family .. "-dismantling"
 end
 

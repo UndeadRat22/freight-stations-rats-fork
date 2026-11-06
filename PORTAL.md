@@ -12,7 +12,7 @@ tables are avoided.
 
 A rebuild of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-stations) (MIT) around a minimal core. Long storage containers and fluid tanks sit alongside your trains; stations joined by stock balancers share one inventory, and you reach that inventory from every wagon position.
 
-**This fork replaces the original; it does not add to it.** The two mods declare each other incompatible, so the game refuses to load with both enabled. Saves from 0.12.x and 0.13.x migrate on first load: every old group becomes one new group, quality, health and last user carry over, and the old inventory is poured into the new fixed capacity - what exceeds it spills around the group's stations, so trim large groups down before switching if you care where the overflow lands.
+**This fork replaces the original; it does not add to it.** The two mods declare each other incompatible, so the game refuses to load with both enabled. Saves from 0.12.x and 0.13.x migrate on first load: every old group becomes one new group in the matching size band, quality, health and last user carry over, and the old inventory always fits (bands round up).
 
 ## Build anywhere, undo works
 
@@ -20,9 +20,9 @@ Stations and tanks build exactly where you place them, like vanilla containers: 
 
 Each tier has a horizontal and a vertical item (linked containers cannot rotate), a rotatable stock balancer, and an underground balancer that pairs across the track like an underground belt, linking both sides into one inventory. Fluid stations are joined by the engine's own fluid segments.
 
-## One shared inventory per group
+## One shared inventory per group, in size bands
 
-A group is every station connected through balancers, and it shares a single linked inventory: six chests' worth for iron, double stack sizes for steel. Members add access points, not space - a row beside a stopped train is one wagon-load of buffer, readable and writable from every station of the row, and every member reports the same contents on the circuit network.
+A group is every station connected through balancers, and it shares a single linked inventory: six chests' worth for iron, double stack sizes for steel. **The capacity grows with the group**: whenever the member count crosses a power-of-two band (capped at the tier's maximum), the members are swapped onto that band's prototype - a rare, quiet swap that carries wires, quality, health and the shared link id over, and pours the items into the bigger inventory (growing always fits; shrinking after members leave spills the overflow). The inventory window shows the band's capacity, rounded up from the member count.
 
 Build a station with a matching neighbour exactly one gap away and a balancer is placed between them automatically - paid for from your inventory, free in cheat mode. No ghosts are placed by proxy: without the item, the connection is simply not made until you build or paste one there.
 

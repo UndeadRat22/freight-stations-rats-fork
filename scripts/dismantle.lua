@@ -16,13 +16,15 @@ local dismantle = {}
 local LINKED = defines.inventory.linked_container_main
 local CHEST = defines.inventory.chest
 
-local FAMILY_OF = {} -- stand-in name -> station family
+local FAMILY_OF = {} -- stand-in name -> { family, band }
 local NAMES = {}
 for _, tier in ipairs(constants.TIERS) do
   for _, family in ipairs({ tier.station_h, tier.station_v }) do
-    local name = constants.dismantling_name(family)
-    FAMILY_OF[name] = family
-    NAMES[#NAMES + 1] = name
+    for _, band in ipairs(constants.BANDS[tier.key]) do
+      local name = constants.dismantling_name(family, band)
+      FAMILY_OF[name] = { family = family, band = band }
+      NAMES[#NAMES + 1] = name
+    end
   end
 end
 table.sort(NAMES)
@@ -73,7 +75,8 @@ function dismantle.on_marked(event)
   if has_surviving_mates(station) then
     return
   end
-  local family = constants.STATION_INFO[station.name].family
+  local info = constants.STATION_INFO[station.name]
+  local family = info.family
   -- slot iteration, not get_contents(): on a linked container's inventory
   -- get_contents() reads empty even with items in the slots (measured
   -- headless, 2.1.24)
@@ -86,7 +89,7 @@ function dismantle.on_marked(event)
     end
   end
   held.clear()
-  local stand_in = swap(station, constants.dismantling_name(family))
+  local stand_in = swap(station, constants.dismantling_name(family, info.band))
   if stand_in then
     local inv = stand_in.get_inventory(CHEST)
     for _, stack in ipairs(contents) do
@@ -109,10 +112,11 @@ end
 -- whatever it touches, contents first into the (possibly shared) inventory.
 function dismantle.on_cancelled(event)
   local stand_in = event.entity
-  local family = FAMILY_OF[stand_in.name]
-  if not family then
+  local info = FAMILY_OF[stand_in.name]
+  if not info then
     return
   end
+  local family = info.family
   local contents = {}
   local chest = stand_in.get_inventory(CHEST)
   for i = 1, #chest do
@@ -121,6 +125,8 @@ function dismantle.on_cancelled(event)
       contents[#contents + 1] = { name = stack.name, count = stack.count, quality = stack.quality }
     end
   end
+  -- back to the plain family prototype: on_station_built links it with
+  -- whatever it touches and the resize pass settles its band
   local station = swap(stand_in, family)
   if station then
     groups.on_station_built(station)

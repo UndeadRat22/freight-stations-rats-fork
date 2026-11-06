@@ -17,7 +17,7 @@ local TILES = constants.STATION_TILES
 
 local TIER_ART = sprite_util.TIER_ART
 
-local function station_entity(tier, art, family, axis)
+local function station_entity(tier, art, family, axis, band)
   local half_long = TILES / 2
   local half_wide = tier.width / 2
   local collision, selection
@@ -31,11 +31,13 @@ local function station_entity(tier, art, family, axis)
 
   local entity = {
     type = "linked-container",
-    name = family,
+    name = constants.station_name(family, band),
     localised_name = { "entity-name." .. family },
     localised_description = { "entity-description." .. family },
     icon = art.icon,
     icon_size = 64,
+    -- larger bands stay out of the factoriopedia: one entry per family
+    hidden_in_factoriopedia = band > 1,
     -- No upgrade path exists, so no size is an upgrade source.
     flags = { "placeable-neutral", "player-creation", "not-upgradable" },
     -- Vanilla-container behaviour: a station can be built over (fast
@@ -48,8 +50,9 @@ local function station_entity(tier, art, family, axis)
     collision_box = collision,
     selection_box = selection,
     gui_mode = "none", -- script owns link_id entirely; no player-facing link GUI
-    -- Exactly the group's capacity, fixed: every member shows every slot.
-    inventory_size = tier.slots,
+    -- The group's capacity, rounded up to its size band: every member
+    -- shows every slot.
+    inventory_size = band * tier.slots,
     inventory_type = "normal",
     picture = sprite_util.station_picture(tier.key, axis),
     -- Like a vanilla chest, a wired station reads out its contents -- which
@@ -80,13 +83,13 @@ end
 
 -- The stand-in a lone station marked for deconstruction turns into (see
 -- scripts/dismantle.lua): looks like a lone station, holds the group
--- inventory's whole contents, and gives the station item when robots
--- finally mine it.
-local function dismantling_entity(tier, art, family, axis)
-  local entity = station_entity(tier, art, family, axis)
+-- inventory's whole contents (sized to the band), and gives the station
+-- item when robots finally mine it.
+local function dismantling_entity(tier, art, family, axis, band)
+  local entity = station_entity(tier, art, family, axis, band)
   entity.type = "container"
   entity.circuit_connector = compat.container_circuit_connector(entity.circuit_connector)
-  entity.name = constants.dismantling_name(family)
+  entity.name = constants.dismantling_name(family, band)
   entity.deconstruction_alternative = constants.deconstruction_entry(tier)
   entity.localised_name = { "entity-name.freight-station-dismantling", { "entity-name." .. family } }
   entity.localised_description = { "entity-description.freight-station-dismantling" }
@@ -114,12 +117,15 @@ end
 
 for _, tier in ipairs(constants.TIERS) do
   local art = TIER_ART[tier.key]
-  data:extend({
-    station_entity(tier, art, tier.station_h, "x"),
-    station_entity(tier, art, tier.station_v, "y"),
-    dismantling_entity(tier, art, tier.station_h, "x"),
-    dismantling_entity(tier, art, tier.station_v, "y"),
-    station_item(tier, art, tier.item_h, "x"),
-    station_item(tier, art, tier.item_v, "y"),
-  })
+  local entities = {}
+  for _, pair in ipairs({ { tier.station_h, "x" }, { tier.station_v, "y" } }) do
+    local family, axis = pair[1], pair[2]
+    for _, band in ipairs(constants.BANDS[tier.key]) do
+      entities[#entities + 1] = station_entity(tier, art, family, axis, band)
+      entities[#entities + 1] = dismantling_entity(tier, art, family, axis, band)
+    end
+  end
+  entities[#entities + 1] = station_item(tier, art, tier.item_h, "x")
+  entities[#entities + 1] = station_item(tier, art, tier.item_v, "y")
+  data:extend(entities)
 end

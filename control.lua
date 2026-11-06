@@ -61,8 +61,15 @@ local function dispatch_built(entity, player_index)
     return
   end
   if geometry.is_station(entity.name) then
+    -- the station may be swapped onto another size band while its group
+    -- settles (groups.lua resize); re-find what stands there before
+    -- auto-connect probes around it
+    local surface, position = entity.surface, entity.position
     groups.on_station_built(entity)
-    connect.on_station_built(entity, player_index)
+    local now = surface.find_entities_filtered({ position = position, type = "linked-container" })[1]
+    if now then
+      connect.on_station_built(now, player_index)
+    end
   else
     groups.on_balancer_built(entity)
   end
@@ -95,13 +102,18 @@ script.on_event(defines.events.on_entity_cloned, on_cloned, BUILD_FILTER)
 -- destroys and cancelled clones give nothing, so it falls to the ground.
 local function on_removed(event, inventory)
   local entity = event.entity
-  if not (entity and entity.valid) then
+  if not entity then
     return
   end
-  if geometry.is_station(entity.name) then
+  -- script_raised_destroy hands over an entity that is already gone: its
+  -- name, surface, position and unit number stay readable, but its
+  -- inventory does not, so the station contents only rescue on the
+  -- events where it is still valid (mined, died)
+  local name = entity.name
+  if geometry.is_station(name) and entity.valid then
     dismantle.on_station_mined(entity, inventory)
   end
-  if not constants.TANK_INFO[entity.name] then
+  if not constants.TANK_INFO[name] then
     groups.on_entity_removed(entity)
   end
 end

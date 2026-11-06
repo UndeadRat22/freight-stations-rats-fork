@@ -11,12 +11,13 @@ local TIER_OF = {} -- station / balancer / underground name -> tier key
 local UNDERGROUND_TIER = constants.UNDERGROUND_TIER
 local RELEVANT_NAMES = {}
 for name, info in pairs(constants.STATION_INFO) do
+  -- every size band included (name variants like family-s4): members swap
+  -- between bands as groups grow, and the walk must keep seeing them
   STATION_AXIS[name] = info.axis
   TIER_OF[name] = info.tier.key
+  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = name
 end
 for _, tier in ipairs(constants.TIERS) do
-  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.station_h
-  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.station_v
   RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.balancer
   RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.underground
   TIER_OF[tier.balancer] = tier.key
