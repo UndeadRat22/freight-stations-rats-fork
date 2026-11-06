@@ -41,7 +41,7 @@ for _, tier in ipairs(constants.ALL_TIERS) do
     {
       type = "technology",
       name = t.name,
-      icon = "__freight-stations__/graphics/technology/" .. t.name .. ".png",
+      icon = "__freight-stations-rats-fork__/graphics/technology/" .. t.name .. ".png",
       icon_size = 256,
       prerequisites = t.prerequisites,
       effects = {

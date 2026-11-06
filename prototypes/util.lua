@@ -72,7 +72,7 @@ function sprite_util.icon(base, kind)
   if kind == "steel" or kind == "tank-steel" then
     suffix = "-steel"
   end
-  return "__freight-stations__/graphics/icons/" .. base .. suffix .. ".png"
+  return "__freight-stations-rats-fork__/graphics/icons/" .. base .. suffix .. ".png"
 end
 
 -- Every item of the mod sits in the vanilla train row of the Logistics tab,

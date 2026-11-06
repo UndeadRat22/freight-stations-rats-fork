@@ -5,24 +5,24 @@
 -- drawn at scale 0.5.
 return {
   iron = {
-    balancer = { filename = "__freight-stations__/graphics/entity/stock-balancer/iron.png", shadow = "__freight-stations__/graphics/entity/stock-balancer/iron-shadow.png", width = 107, height = 108, shift = { 0.2141, -0.1268 } },
+    balancer = { filename = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/iron.png", shadow = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/iron-shadow.png", width = 107, height = 108, shift = { 0.2141, -0.1268 } },
     underground = {
-      north = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-north.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-north-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
-      east = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-east.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-east-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
-      south = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-south.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-south-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
-      west = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-west.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/iron-west-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
+      north = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-north.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-north-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
+      east = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-east.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-east-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
+      south = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-south.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-south-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
+      west = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-west.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/iron-west-shadow.png", width = 117, height = 117, shift = { 0.2912, -0.1904 } },
     },
   },
   steel = {
     balancer = {
-      x = { filename = "__freight-stations__/graphics/entity/stock-balancer/steel-h.png", shadow = "__freight-stations__/graphics/entity/stock-balancer/steel-h-shadow.png", width = 116, height = 180, shift = { 0.2826, -0.1833 } },
-      y = { filename = "__freight-stations__/graphics/entity/stock-balancer/steel-v.png", shadow = "__freight-stations__/graphics/entity/stock-balancer/steel-v-shadow.png", width = 180, height = 116, shift = { 0.2826, -0.1833 } },
+      x = { filename = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/steel-h.png", shadow = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/steel-h-shadow.png", width = 116, height = 180, shift = { 0.2826, -0.1833 } },
+      y = { filename = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/steel-v.png", shadow = "__freight-stations-rats-fork__/graphics/entity/stock-balancer/steel-v-shadow.png", width = 180, height = 116, shift = { 0.2826, -0.1833 } },
     },
     underground = {
-      north = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-north.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-north-shadow.png", width = 117, height = 181, shift = { 0.2912, -0.1904 } },
-      east = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-east.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-east-shadow.png", width = 181, height = 117, shift = { 0.2912, -0.1904 } },
-      south = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-south.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-south-shadow.png", width = 117, height = 181, shift = { 0.2912, -0.1904 } },
-      west = { filename = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-west.png", shadow = "__freight-stations__/graphics/entity/underground-stock-balancer/steel-west-shadow.png", width = 181, height = 117, shift = { 0.2912, -0.1904 } },
+      north = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-north.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-north-shadow.png", width = 117, height = 181, shift = { 0.2912, -0.1904 } },
+      east = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-east.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-east-shadow.png", width = 181, height = 117, shift = { 0.2912, -0.1904 } },
+      south = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-south.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-south-shadow.png", width = 117, height = 181, shift = { 0.2912, -0.1904 } },
+      west = { filename = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-west.png", shadow = "__freight-stations-rats-fork__/graphics/entity/underground-stock-balancer/steel-west-shadow.png", width = 181, height = 117, shift = { 0.2912, -0.1904 } },
     },
   },
 }
