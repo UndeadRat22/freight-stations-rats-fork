@@ -55,7 +55,15 @@ function blueprint.on_setup_blueprint(event)
   end
 
   if changed then
-    stack.set_blueprint_entities(entities)
+    -- fix_positions=false: the half-tile placer offsets above change the
+    -- blueprint's snapping context, and with the default (true) the engine
+    -- then re-snaps every stored position "invalid for the current
+    -- snapping" -- observed as every 2x2 rail in the blueprint jumping
+    -- one tile down and one right (a nearest-valid-tile nudge) after
+    -- "select new contents" on a capture containing rails. Leaving the
+    -- captured positions verbatim keeps rails, stops and balancers where
+    -- they were; genuinely invalid positions still get corrected.
+    stack.set_blueprint_entities(entities, false)
   end
 end
 

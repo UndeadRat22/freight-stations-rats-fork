@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.12.10
+Date: 2026-11-06
+  Bugfixes:
+    - Fixed "select new contents" on a blueprint containing rails shifting every rail one tile down and one tile right: the station-to-placer swap's half-tile offsets made the engine re-snap stored positions; blueprint entities are now stored verbatim (set_blueprint_entities with fix_positions=false).
+    - Fixed a flipped or shifted paste leaving a stock balancer (or underground balancer) ghost stranded where no gap exists - for example inside what is or will be a station's footprint - where robots could never build it. Such ghosts are now refused after one retry, and the item is returned.
+  Changes:
+    - Stations can now stand beside the start of a curved rail segment: curved rails count as covering the tiles at the end where they meet the straight run (previously only straight rails counted, so any 6-tile span touching a curve was rejected).
+---------------------------------------------------------------------------------------------------
 Version: 0.12.9
 Date: 2026-10-17
   Bugfixes:

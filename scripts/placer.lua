@@ -44,19 +44,19 @@ local underground_axes = placer_axes
 
 for _, tier in ipairs(constants.ALL_TIERS) do
   if tier.balancer_placer then
-    GAP_GHOSTS[tier.balancer_placer] = { tier = tier, axes = placer_axes }
-    GAP_GHOSTS[tier.balancer_h] = { tier = tier, axes = function()
+    GAP_GHOSTS[tier.balancer_placer] = { tier = tier, item = tier.balancer_item, axes = placer_axes }
+    GAP_GHOSTS[tier.balancer_h] = { tier = tier, item = tier.balancer_item, axes = function()
       return { "x" }
     end }
-    GAP_GHOSTS[tier.balancer_v] = { tier = tier, axes = function()
+    GAP_GHOSTS[tier.balancer_v] = { tier = tier, item = tier.balancer_item, axes = function()
       return { "y" }
     end }
   else
     -- the iron stock balancer links on all four sides; fluid balancers turn
     -- (north/south: in an x row), see constants.TANK_TIERS
-    GAP_GHOSTS[tier.balancer_h] = { tier = tier, axes = tier.fluid and placer_axes or both_axes }
+    GAP_GHOSTS[tier.balancer_h] = { tier = tier, item = tier.balancer_item, axes = tier.fluid and placer_axes or both_axes }
   end
-  GAP_GHOSTS[tier.underground] = { tier = tier, axes = underground_axes }
+  GAP_GHOSTS[tier.underground] = { tier = tier, item = tier.underground_item, axes = underground_axes }
 end
 
 local GAP_GHOST_NAMES = {}
@@ -444,7 +444,17 @@ local function snap_gap_ghost(ghost, player_index, retried)
     if not retried then
       table.insert(storage.pending_ghosts, { ghost = ghost, player_index = player_index, gap = true })
       ticker.update()
+      return
     end
+    -- No gap after the retry: a flipped or shifted paste can put a balancer
+    -- ghost past the row's end, or inside what already is / will be a
+    -- station's footprint, where it could never be built -- it would sit
+    -- there forever blocking robots. Tear it down and hand the item back,
+    -- the same way a station ghost with no wagon slot is refused.
+    local quality = ghost.quality
+    local item = info.item
+    ghost.destroy()
+    refuse(surface, position, item, quality, player_index, { "freight-stations-messages.no-gap" })
     return
   end
   if best_shift < 0.01 then

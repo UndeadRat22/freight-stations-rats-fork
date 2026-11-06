@@ -41,13 +41,25 @@ local function area(along, along_min, along_max, across_min, across_max)
   return { { across_min, along_min }, { across_max, along_max } }
 end
 
--- Positions of every straight rail (built or ghost) in `area` that runs
--- along `along`.
+-- Positions of every rail (built or ghost) in `area` that a station along
+-- `along` can stand beside: straight rails running that way, plus curved
+-- rails (flagged `curved`). A curved rail's anchor sits near the middle of
+-- its ~4-tile piece on the line of the track it continues (measured headless
+-- 2.1.24: an E/W-going curve anchors at even x on the track's y, a N/S-going
+-- one at odd x), so covered_tiles' across check keeps it honest; covered_tiles
+-- marks its anchor pair plus the tile toward the station, so a station can
+-- end where a curved segment begins. Without counting curves, a station can
+-- never stand beside the start of a curved segment at all.
 local function parallel_rails(surface, search_area, along)
   local found = {}
   for _, rail in ipairs(find_with_ghosts(surface, search_area, "straight-rail")) do
     if TRACK_DIRECTION[along][rail.direction] then
-      found[#found + 1] = rail.position
+      found[#found + 1] = { x = rail.position.x, y = rail.position.y }
+    end
+  end
+  for _, type in ipairs({ "curved-rail-a", "curved-rail-b" }) do
+    for _, rail in ipairs(find_with_ghosts(surface, search_area, type)) do
+      found[#found + 1] = { x = rail.position.x, y = rail.position.y, curved = true }
     end
   end
   return found
@@ -61,7 +73,7 @@ end
 -- The along-track tiles (indexed by the floor of their centre) that have a
 -- rail from `rail_positions` level with them, at a usable distance from a
 -- station of `family` whose centre sits at `across_value` across the track.
-function rails.covered_tiles(rail_positions, family, across_value)
+function rails.covered_tiles(rail_positions, family, across_value, along_value)
   local info = constants.FAMILY_INFO[family]
   local along = info.axis
   local across = along == "x" and "y" or "x"
@@ -73,6 +85,17 @@ function rails.covered_tiles(rail_positions, family, across_value)
       -- the two tiles whose centres lie within RAIL_HALF of the rail's
       covered[math.floor(p[along] - 0.5)] = true
       covered[math.floor(p[along] + 0.5)] = true
+      -- a curved rail also covers the tile its piece spans toward the
+      -- station (its anchor sits mid-piece; the connection end is on the
+      -- station's side). Straight rails must NOT get this: it would paper
+      -- over a one-tile missing rail under the station.
+      if p.curved and along_value then
+        if p[along] > along_value then
+          covered[math.floor(p[along] - 1.5)] = true
+        elseif p[along] < along_value then
+          covered[math.floor(p[along] + 1.5)] = true
+        end
+      end
     end
   end
   return covered
@@ -94,7 +117,7 @@ function rails.station_ok(surface, position, family, covered)
       area(along, position[along] - half_long - RAIL_HALF, position[along] + half_long + RAIL_HALF, position[across] - r, position[across] + r),
       along
     )
-    covered = rails.covered_tiles(rail_positions, family, position[across])
+    covered = rails.covered_tiles(rail_positions, family, position[across], position[along])
   end
 
   for i = 0, constants.STATION_TILES - 1 do
