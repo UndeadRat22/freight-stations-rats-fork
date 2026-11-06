@@ -6,8 +6,7 @@ local constants = require("scripts.constants")
 
 local geometry = {}
 
-local STATION_AXIS = {}
-local BALANCER_AXES = {} -- balancer name -> list of axes it connects along
+local STATION_AXIS = {} -- station prototype name -> its long axis
 local TIER_OF = {} -- station / balancer / underground name -> tier key
 local UNDERGROUND_TIER = constants.UNDERGROUND_TIER
 local RELEVANT_NAMES = {}
@@ -16,27 +15,14 @@ for name, info in pairs(constants.STATION_INFO) do
   TIER_OF[name] = info.tier.key
 end
 for _, tier in ipairs(constants.TIERS) do
-  for _, family in ipairs({ tier.station_h, tier.station_v }) do
-    for _, name in ipairs(constants.FAMILY_NAMES[family]) do
-      RELEVANT_NAMES[#RELEVANT_NAMES + 1] = name
-    end
-  end
-  if tier.balancer_placer then
-    -- 1 x width balancers only connect along the track axis they sit on
-    BALANCER_AXES[tier.balancer_h] = { "x" }
-    BALANCER_AXES[tier.balancer_v] = { "y" }
-    RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.balancer_h
-    RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.balancer_v
-  else
-    -- square balancer: probe all 4 sides
-    BALANCER_AXES[tier.balancer_h] = { "x", "y" }
-    RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.balancer_h
-  end
+  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.station_h
+  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.station_v
+  RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.balancer
   RELEVANT_NAMES[#RELEVANT_NAMES + 1] = tier.underground
-  TIER_OF[tier.balancer_h] = tier.key
-  TIER_OF[tier.balancer_v] = tier.key
+  TIER_OF[tier.balancer] = tier.key
   TIER_OF[tier.underground] = tier.key
 end
+table.sort(RELEVANT_NAMES)
 
 local HALF_LONG = constants.STATION_TILES / 2
 local BALANCER_HALF = 0.5
@@ -60,10 +46,10 @@ function geometry.is_underground(name)
   return UNDERGROUND_TIER[name] ~= nil
 end
 
--- Undergrounds count as balancers: within their own row they connect
--- exactly like one, the cross-track pairing is on top of that.
+-- Balancers count as connectors: within their own row they link stations
+-- exactly like a bridge, the cross-track pairing of undergrounds is on top.
 function geometry.is_balancer(name)
-  return BALANCER_AXES[name] ~= nil or UNDERGROUND_TIER[name] ~= nil
+  return TIER_OF[name] ~= nil and STATION_AXIS[name] == nil
 end
 
 function geometry.relevant_names()
@@ -81,9 +67,9 @@ function geometry.station_names()
 end
 
 -- Searches go by entity type and check the name in Lua: a `name` filter
--- listing every size prototype (300+ names) cost several times more per
--- call than the search itself (measured headless, 2.0.77: a 100-station
--- group walk went from 33 ms to 7.6 ms).
+-- listing every prototype (300+ names in the old size-variant build) cost
+-- several times more per call than the search itself (measured headless,
+-- 2.0.77: a 100-station group walk went from 33 ms to 7.6 ms).
 local RELEVANT = {}
 for _, name in ipairs(RELEVANT_NAMES) do
   RELEVANT[name] = true
@@ -108,9 +94,10 @@ function geometry.opposite(direction)
   return (direction + 8) % 16
 end
 
--- An underground faces across the track, so its row runs perpendicular to
--- its facing: north/south-facing ones sit in a horizontal (x) row.
-local function underground_row_axis(entity)
+-- A balancer or underground faces across the track, so its row runs
+-- perpendicular to its facing: north/south-facing ones sit in a
+-- horizontal (x) row.
+local function row_axis(entity)
   local f = FACING[entity.direction]
   if f and f.x == 0 then
     return "x"
@@ -123,41 +110,32 @@ local function connects_along(entity, axis)
   if station_axis then
     return station_axis == axis
   end
-  if UNDERGROUND_TIER[entity.name] then
-    return underground_row_axis(entity) == axis
-  end
-  for _, a in ipairs(BALANCER_AXES[entity.name]) do
-    if a == axis then
-      return true
-    end
-  end
-  return false
+  return row_axis(entity) == axis
 end
 
 local function ports_of(entity)
   local p = entity.position
   local axis = STATION_AXIS[entity.name]
-  if axis == "x" then
-    return {
-      { x = p.x + HALF_LONG, y = p.y, axis = "x" },
-      { x = p.x - HALF_LONG, y = p.y, axis = "x" },
-    }
-  elseif axis == "y" then
-    return {
-      { x = p.x, y = p.y + HALF_LONG, axis = "y" },
-      { x = p.x, y = p.y - HALF_LONG, axis = "y" },
-    }
-  end
-  local axes = BALANCER_AXES[entity.name] or { underground_row_axis(entity) }
-  local ports = {}
-  for _, a in ipairs(axes) do
-    if a == "x" then
-      ports[#ports + 1] = { x = p.x + BALANCER_HALF, y = p.y, axis = "x" }
-      ports[#ports + 1] = { x = p.x - BALANCER_HALF, y = p.y, axis = "x" }
+  if axis then
+    if axis == "x" then
+      return {
+        { x = p.x + HALF_LONG, y = p.y, axis = "x" },
+        { x = p.x - HALF_LONG, y = p.y, axis = "x" },
+      }
     else
-      ports[#ports + 1] = { x = p.x, y = p.y + BALANCER_HALF, axis = "y" }
-      ports[#ports + 1] = { x = p.x, y = p.y - BALANCER_HALF, axis = "y" }
+      return {
+        { x = p.x, y = p.y + HALF_LONG, axis = "y" },
+        { x = p.x, y = p.y - HALF_LONG, axis = "y" },
+      }
     end
+  end
+  local ports = {}
+  if row_axis(entity) == "x" then
+    ports[#ports + 1] = { x = p.x + BALANCER_HALF, y = p.y, axis = "x" }
+    ports[#ports + 1] = { x = p.x - BALANCER_HALF, y = p.y, axis = "x" }
+  else
+    ports[#ports + 1] = { x = p.x, y = p.y + BALANCER_HALF, axis = "y" }
+    ports[#ports + 1] = { x = p.x, y = p.y - BALANCER_HALF, axis = "y" }
   end
   return ports
 end
@@ -177,8 +155,7 @@ local function probe_area(port)
 end
 
 -- Every `exclude_unit_number` parameter below is a unit number, a set
--- {unit_number = true} (several stations leaving a group at once,
--- groups.remove_members) or nil.
+-- {unit_number = true}, or nil.
 local function excluded(exclude, unit_number)
   if type(exclude) == "table" then
     return exclude[unit_number] == true
@@ -288,17 +265,6 @@ local function touching(surface, entity, exclude_unit_number)
   return found
 end
 
--- True if `entity` touches a station or balancer it can't link with because
--- the balancer tier doesn't match (for the "can't connect" warning).
-function geometry.has_tier_mismatch(surface, entity)
-  for _, candidate in pairs(touching(surface, entity)) do
-    if not same_tier_rule(entity, candidate) then
-      return true
-    end
-  end
-  return false
-end
-
 -- Entities whose footprint directly touches `entity`'s ends and that it may
 -- link with (see same_tier_rule), plus an underground's paired partner.
 -- `exclude_unit_number` lets callers treat an entity that's mid-removal (but
@@ -346,6 +312,26 @@ function geometry.reachable_stations(surface, start_entity, exclude_unit_number)
   end
 
   return stations, visited
+end
+
+-- Connected components left behind when `entity` goes: one BFS per
+-- neighbour not already covered by an earlier one (two neighbours can still
+-- be connected the long way round, e.g. through two underground pairs).
+function geometry.pieces_around(surface, entity, removed)
+  local pieces = {}
+  local covered = {}
+  for unit_number, neighbor in pairs(geometry.immediate_neighbors(surface, entity, removed)) do
+    if not covered[unit_number] then
+      local stations, visited = geometry.reachable_stations(surface, neighbor, removed)
+      for u in pairs(visited) do
+        covered[u] = true
+      end
+      if next(stations) then
+        pieces[#pieces + 1] = stations
+      end
+    end
+  end
+  return pieces
 end
 
 return geometry

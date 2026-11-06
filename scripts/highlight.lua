@@ -4,6 +4,7 @@
 -- the hovering player and cleared when the selection changes.
 local constants = require("scripts.constants")
 local compat = require("scripts.compat")
+local geometry = require("scripts.geometry")
 
 local highlight = {}
 
@@ -55,16 +56,16 @@ local function hovered_group(selected)
   if not constants.STATION_INFO[selected.name] then
     return nil
   end
-  local link_id = storage.station_group[selected.unit_number]
-  local group = link_id and storage.groups[link_id]
-  if not group or group.count < 2 then
-    return nil
-  end
+  -- members of the group: the stations reachable from this one, all sharing
+  -- its link_id (walked live -- the world is the only state)
   local members = {}
-  for _, station in pairs(group.stations) do
+  for _, station in pairs(geometry.reachable_stations(selected.surface, selected)) do
     members[#members + 1] = station
   end
-  return members, link_id .. "/" .. group.count
+  if #members < 2 then
+    return nil
+  end
+  return members, selected.link_id .. "/" .. #members
 end
 
 local function draw(player)

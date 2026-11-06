@@ -45,7 +45,8 @@ for _, tier in ipairs(constants.ALL_TIERS) do
       icon_size = 256,
       prerequisites = t.prerequisites,
       effects = {
-        { type = "unlock-recipe", recipe = tier.item },
+        { type = "unlock-recipe", recipe = tier.item_h },
+        { type = "unlock-recipe", recipe = tier.item_v },
         { type = "unlock-recipe", recipe = tier.balancer_item },
         { type = "unlock-recipe", recipe = tier.underground_item },
       },

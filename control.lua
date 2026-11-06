@@ -1,194 +1,136 @@
 local constants = require("scripts.constants")
 local geometry = require("scripts.geometry")
 local groups = require("scripts.groups")
-local placer = require("scripts.placer")
-local blueprint = require("scripts.blueprint")
+local connect = require("scripts.connect")
 local underground = require("scripts.underground")
 local highlight = require("scripts.highlight")
 local dismantle = require("scripts.dismantle")
-local ticker = require("scripts.ticker")
 local tanks = require("scripts.tanks")
-local ghosts = require("scripts.ghosts")
 
 local function init_storage()
-  storage.groups = storage.groups or {}
-  storage.station_group = storage.station_group or {}
   storage.next_link_id = storage.next_link_id or 1
-  storage.pending_build_mode = storage.pending_build_mode or {}
   storage.highlights = storage.highlights or {}
   storage.highlight_keys = storage.highlight_keys or {}
-  storage.gap_reservations = storage.gap_reservations or {}
-  storage.last_drag_tick = storage.last_drag_tick or {}
-  storage.swapped_stations = storage.swapped_stations or {}
-  storage.pending_dismantles = storage.pending_dismantles or {}
-  storage.marked_stations = storage.marked_stations or {}
-  storage.cancelled_stand_ins = storage.cancelled_stand_ins or {}
 end
 
 script.on_init(init_storage)
-
--- Build events need the placer in the filter too (its swap handler replaces
--- it with a station, which re-enters this same dispatch); removal events
--- don't, since the placer never survives long enough to be mined or killed.
-local BUILD_NAMES = {}
-for name in pairs(constants.PLACERS) do
-  BUILD_NAMES[#BUILD_NAMES + 1] = name
-end
-table.sort(BUILD_NAMES) -- pairs() order must not vary between clients
-for _, name in ipairs(geometry.relevant_names()) do
-  BUILD_NAMES[#BUILD_NAMES + 1] = name
-end
--- tank undergrounds: only to face a waiting partner (scripts/tanks.lua)
-for _, name in ipairs(tanks.underground_names()) do
-  BUILD_NAMES[#BUILD_NAMES + 1] = name
-end
 
 local function name_filter(names)
   local f = {}
   for _, name in ipairs(names) do
     f[#f + 1] = { filter = "name", name = name }
+    -- ghost_name matches a ghost's inner name AND a real entity's name,
+    -- which is what the build events below need (an entity-ghost built by a
+    -- player, or the real entity a script_raised_revive hands over)
+    f[#f + 1] = { filter = "ghost_name", name = name }
   end
   return f
 end
 
+-- Everything whose build links or re-links stations: stations, balancers,
+-- undergrounds (station tiers), and tank undergrounds (to face them and
+-- show their pairing; tanks themselves are linked by the engine's own
+-- fluid segments). Sorted: an event filter's pairs() order must not vary
+-- between clients.
+local BUILD_NAMES = {}
+for name in pairs(constants.STATION_INFO) do
+  BUILD_NAMES[#BUILD_NAMES + 1] = name
+end
+for _, tier in ipairs(constants.TIERS) do
+  BUILD_NAMES[#BUILD_NAMES + 1] = tier.balancer
+  BUILD_NAMES[#BUILD_NAMES + 1] = tier.underground
+end
+for _, name in ipairs(tanks.underground_names()) do
+  BUILD_NAMES[#BUILD_NAMES + 1] = name
+end
+table.sort(BUILD_NAMES)
+
+local BUILD_FILTER = name_filter(BUILD_NAMES)
+
 local function dispatch_built(entity, player_index)
   if not (entity and entity.valid) then
-    return
-  end
-  if placer.is_placer(entity.name) then
-    placer.swap(entity, player_index)
     return
   end
   if tanks.is_underground(entity.name) then
     tanks.on_underground_built(entity, player_index)
     return
   end
-  if not (geometry.is_station(entity.name) or geometry.is_balancer(entity.name)) then
+  if geometry.is_underground(entity.name) then
+    underground.on_built(entity, player_index)
     return
   end
-  -- First: joining a group can replace a station with a resized prototype
-  -- (scripts/groups.lua), after which `entity` is no longer valid.
-  script.register_on_object_destroyed(entity)
   if geometry.is_station(entity.name) then
     groups.on_station_built(entity)
-  elseif geometry.is_underground(entity.name) then
-    underground.on_built(entity, player_index)
+    connect.on_station_built(entity, player_index)
   else
     groups.on_balancer_built(entity)
   end
 end
 
 local function on_built(event)
-  local entity = event.entity
-  if entity and entity.valid and entity.name == "entity-ghost" then
-    -- Ghosts of everything only built through a placer (station sizes,
-    -- tanks, wide balancers) are swapped for ghosts of that placer, which
-    -- robots can actually build (scripts/ghosts.lua). Everything else a
-    -- player pastes stays exactly where it was placed: stations build
-    -- wherever their placer ghost was.
-    if ghosts.is_swapped(entity.ghost_name) then
-      ghosts.to_placer(entity)
-    end
-    return
-  end
-  dispatch_built(entity, event.player_index)
+  dispatch_built(event.entity, event.player_index)
 end
 
 local function on_cloned(event)
-  dispatch_built(event.destination)
+  dispatch_built(event.destination, nil)
 end
 
 local build_events = {
+  defines.events.on_built_entity,
   defines.events.on_robot_built_entity,
   defines.events.on_space_platform_built_entity,
+  -- 2.1 renamed these: the old on_script_raised_* ids no longer exist
   defines.events.script_raised_built,
   defines.events.script_raised_revive,
 }
-
-local function ghost_filter(filter, names)
-  for _, name in ipairs(names) do
-    filter[#filter + 1] = { filter = "ghost_name", name = name }
-  end
-  return filter
-end
-
 for _, event_id in ipairs(build_events) do
-  script.on_event(event_id, on_built, ghost_filter(name_filter(BUILD_NAMES), ghosts.names()))
+  script.on_event(event_id, on_built, BUILD_FILTER)
 end
 
-script.on_event(defines.events.on_built_entity, on_built, ghost_filter(name_filter(BUILD_NAMES), ghosts.names()))
+script.on_event(defines.events.on_entity_cloned, on_cloned, BUILD_FILTER)
 
-script.on_event(defines.events.on_entity_cloned, on_cloned, name_filter(BUILD_NAMES))
+-- Removal: player mining and entity death provide an inventory (buffer or
+-- loot) for a removed station's group to empty into; robots, script
+-- destroys and cancelled clones give nothing, so it falls to the ground.
+local function on_removed(event, inventory)
+  local entity = event.entity
+  if not (entity and entity.valid) then
+    return
+  end
+  if geometry.is_station(entity.name) then
+    dismantle.on_station_mined(entity, inventory)
+  end
+  if not constants.TANK_INFO[entity.name] then
+    groups.on_entity_removed(entity)
+  end
+end
 
--- Pairs with placer.swap: records whether THIS placement was part of a drag
--- (or a blueprint/copy/cut, which always counts as deliberate) so the build
--- event right after it knows whether to auto-connect. Fires for every item
--- placement by any player, not just ours -- on_pre_build carries no entity
--- name to filter on, since nothing has been built yet.
-script.on_event(defines.events.on_pre_build, function(event)
-  placer.note_pre_build(event)
-end)
-
-script.on_event(defines.events.on_player_setup_blueprint, blueprint.on_setup_blueprint)
-
-local REMOVAL_NAMES = geometry.relevant_names()
-
--- Removal: player mining and entity death provide an inventory
--- (buffer/loot) for whatever a removed station's group can no longer hold
--- -- that's the engine's normal "what you get back" destination, so we feed
--- our redistribution into it rather than fighting it. Robots carry too
--- little for that: they normally get a station already turned into a
--- stand-in when it was marked (scripts/dismantle.lua), which is a plain
--- container and not ours to handle.
 script.on_event(defines.events.on_player_mined_entity, function(event)
-  groups.on_entity_removed(event.entity, event.buffer)
-end, name_filter(REMOVAL_NAMES))
+  on_removed(event, event.buffer)
+end, BUILD_FILTER)
 
 script.on_event(defines.events.on_robot_mined_entity, function(event)
-  if geometry.is_station(event.entity.name) then
-    dismantle.on_robot_mined(event.entity, event.buffer)
-  else
-    groups.on_entity_removed(event.entity, event.buffer)
-  end
-end, name_filter(REMOVAL_NAMES))
+  on_removed(event, event.buffer)
+end, BUILD_FILTER)
 
--- Deconstruction marks: a marked station becomes a stand-in robots can
--- empty, and back again when the mark is cancelled (scripts/dismantle.lua).
+script.on_event(defines.events.on_entity_died, function(event)
+  on_removed(event, event.loot)
+end, BUILD_FILTER)
+
+script.on_event(defines.events.script_raised_destroy, function(event)
+  on_removed(event, nil)
+end, BUILD_FILTER)
+
+-- Deconstruction marks: the last station of a group becomes a stand-in
+-- robots can empty, and back again when the mark is cancelled
+-- (scripts/dismantle.lua).
 script.on_event(defines.events.on_marked_for_deconstruction, dismantle.on_marked, name_filter(geometry.station_names()))
 script.on_event(defines.events.on_cancelled_deconstruction, dismantle.on_cancelled, name_filter(dismantle.names()))
 
-script.on_event(defines.events.on_entity_died, function(event)
-  groups.on_entity_removed(event.entity, event.loot)
-end, name_filter(REMOVAL_NAMES))
-
--- The ghosts that stations, tanks and wide balancers leave behind become
--- placer ghosts (scripts/ghosts.lua): on death, on undo, and on pipette the
--- real item stands in for the hidden one.
-script.on_event(defines.events.on_post_entity_died, ghosts.on_post_entity_died, {
-  { filter = "type", type = "linked-container" },
-  { filter = "type", type = "storage-tank" },
-  { filter = "type", type = "simple-entity-with-owner" },
-})
--- Undo: ghosts swaps ghost-of-removed back to ghost-of-placer, and the
--- placer path removes stations the undone paste swapped in.
-script.on_event(defines.events.on_undo_applied, function(event)
-  ghosts.on_undo_applied(event)
-  placer.on_undo_applied(event)
-end)
-script.on_event(defines.events.on_player_pipette, ghosts.on_player_pipette)
-
--- entity is still valid here (same as the other removal events above), but
--- there is no player/robot buffer for what the group can no longer hold, so
--- that falls through to the ground-spill fallback.
-script.on_event(defines.events.script_raised_destroy, function(event)
-  groups.on_entity_removed(event.entity, nil)
-end, name_filter(REMOVAL_NAMES))
-
 -- Only underground balancers (and the wide fluid balancer, which needs
--- nothing) can be rotated or flipped once placed: the
--- placers are swapped out within their own build event, and the real
--- stations and regular balancers can't turn at all. Neither event takes a
--- filter, so check the name here.
+-- nothing) can be rotated or flipped once placed: stations and regular
+-- balancers hold their direction. Neither event takes a filter, so check
+-- the name here.
 script.on_event(defines.events.on_player_rotated_entity, function(event)
   local entity = event.entity
   if entity and entity.valid and geometry.is_underground(entity.name) then
@@ -205,13 +147,6 @@ script.on_event(defines.events.on_player_flipped_entity, function(event)
   end
 end)
 
--- Safety net: a station destroyed through a path that skipped the handlers
--- above. Its group is re-derived from what's left; stations the mod
--- replaced or removed itself are no longer in storage.station_group by now.
-script.on_event(defines.events.on_object_destroyed, function(event)
-  groups.on_station_vanished(event.useful_id)
-end)
-
 -- Recipes are tech-gated: enables this mod's recipes for every force that
 -- has researched a technology unlocking them, or techs researched before a
 -- recipe was added would never unlock it. Only ever enables, and only these
@@ -220,7 +155,8 @@ end)
 local function unlock_researched_recipes()
   local ours = {}
   for _, tier in ipairs(constants.ALL_TIERS) do
-    ours[tier.item] = true
+    ours[tier.item_h] = true
+    ours[tier.item_v] = true
     ours[tier.balancer_item] = true
     ours[tier.underground_item] = true
   end
@@ -245,43 +181,13 @@ local function unlock_researched_recipes()
   end
 end
 
-local function on_configuration_changed()
+script.on_configuration_changed(function()
   init_storage()
-  -- Saves from 0.4.0: the engine removes the old spot resources with their
-  -- prototype, this drops their bookkeeping.
-  storage.spots = nil
-  storage.stop_spots = nil
-  -- Up to 0.8.0: tracked balancers, never read.
-  storage.balancers = nil
-  -- Brings every group in line with the world and to the station prototype
-  -- sized for it: needed whenever a tier's max_group changes, and repairs
-  -- anything an older version got wrong. A no-op for groups that are right.
-  groups.resync_all()
-  -- Up to 0.12.0: ghosts of stations, tanks and wide balancers that robots
-  -- can't build any more.
-  ghosts.migrate()
   unlock_researched_recipes()
-  ticker.update()
-end
+end)
 
-script.on_configuration_changed(on_configuration_changed)
-
+-- Mouseover highlight (scripts/highlight.lua).
 script.on_event(defines.events.on_selected_entity_changed, highlight.on_selected_entity_changed)
-
--- Stations marked for deconstruction last tick (dismantle.on_tick).
--- Registered only while there is queued work (scripts/ticker.lua).
-ticker.set_handler(function()
-  dismantle.on_tick()
-  ticker.update()
-end)
-script.on_load(ticker.update)
-
--- Drops drag-spacing reservations once a player has stopped dragging.
-script.on_nth_tick(60, function(event)
-  placer.expire_reservations(event.tick)
-end)
-
--- Mouseover group outline refresh (scripts/highlight.lua).
 script.on_nth_tick(30, function()
   highlight.refresh_all()
 end)
@@ -293,5 +199,4 @@ end)
 
 script.on_event(defines.events.on_player_removed, function(event)
   highlight.clear(event.player_index)
-  placer.forget_player(event.player_index)
 end)

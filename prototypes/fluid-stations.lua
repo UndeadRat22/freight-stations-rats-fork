@@ -125,9 +125,7 @@ local function tank_entity(tier, family, axis)
     localised_description = { "entity-description." .. tier.station_h },
     icon = art.icon,
     flags = { "placeable-neutral", "player-creation", "not-upgradable", "not-rotatable" },
-    minable = { mining_time = 0.5, result = tier.item },
-    -- only built through the placer (constants.placeholder)
-    placeable_by = { item = constants.placeholder(tier.item), count = 1 },
+    minable = { mining_time = 0.5, result = axis == "x" and tier.item_h or tier.item_v },
     -- both axes are one entry in the deconstruction planner
     deconstruction_alternative = family ~= tier.station_h and tier.station_h or nil,
     max_health = art.health,
@@ -173,7 +171,7 @@ local function balancer_entity(tier)
     connections[#connections + 1] = { direction = E, position = { 0, cy } }
   end
   return storage_tank({
-    name = tier.balancer_h,
+    name = tier.balancer,
     icon = sprite_util.icon("fluid-balancer", tier.key),
     minable = { mining_time = 0.2, result = tier.balancer_item },
     max_health = 150,
@@ -258,8 +256,9 @@ for _, tier in ipairs(constants.TANK_TIERS) do
     tank_entity(tier, tier.station_v, "y"),
     balancer_entity(tier),
     underground_entity(tier),
-    item(tier.item, TIER_ART[tier.key].icon, sprite_util.order(tier, "a[station]"), tier.placer, 10),
-    item(tier.balancer_item, sprite_util.icon("fluid-balancer", tier.key), sprite_util.order(tier, "b[balancer]"), tier.balancer_h, 50),
+    item(tier.item_h, TIER_ART[tier.key].icon, sprite_util.order(tier, "a[station]"), tier.station_h, 10),
+    item(tier.item_v, TIER_ART[tier.key].icon, sprite_util.order(tier, "a[station]-v"), tier.station_v, 10),
+    item(tier.balancer_item, sprite_util.icon("fluid-balancer", tier.key), sprite_util.order(tier, "b[balancer]"), tier.balancer, 50),
     item(tier.underground_item, sprite_util.icon("underground-fluid-balancer", tier.key), sprite_util.order(tier, "c[underground]"), tier.underground, 50),
   })
 end

@@ -1,10 +1,9 @@
--- Player-facing behaviour of underground balancers. The pairing rule itself
--- lives in scripts/geometry.lua, the group bookkeeping in scripts/groups.lua;
--- this module only decides which way an underground faces and shows the
--- player what it paired with.
+-- Player-facing behaviour of underground balancers. The pairing rule lives
+-- in scripts/geometry.lua, the linking in scripts/groups.lua; this module
+-- only decides which way an underground faces and shows the player what it
+-- paired with.
 local geometry = require("scripts.geometry")
 local groups = require("scripts.groups")
-local placer = require("scripts.placer")
 
 local underground = {}
 
@@ -50,10 +49,7 @@ function underground.on_built(entity, player_index)
   -- Only a hand placement auto-flips: blueprint/robot/script layouts already
   -- say exactly which way each one faces.
   if player_index then
-    local pending = placer.consume_pre_build(player_index)
-    if pending and not pending.from_blueprint then
-      auto_flip(entity)
-    end
+    auto_flip(entity)
   end
   groups.on_underground_changed(entity)
   show_pair(entity, player_index)
@@ -62,24 +58,17 @@ end
 -- R on a placed underground flips which way it faces across the track,
 -- same as underground belts. A quarter turn would move it onto the other
 -- row axis and silently disconnect it from the stations either side, so it
--- is turned into a half turn instead. (The 1x2 steel one already gets a
--- half turn from the engine, since a quarter turn would change its
--- footprint; this makes the 1x1 iron one behave the same.)
+-- is turned into a half turn instead.
 --
 -- Not when the rotation came from pasting a blueprint over it: then the
--- blueprint's direction is deliberate and must win. 2.1 raises this event
--- for those (fixed in 2.1, forums.factorio.com/131355; 2.0 raises nothing
--- at all there). The player is holding the blueprint in that case, whereas
--- R with a blueprint in hand rotates the blueprint, never a placed entity.
-local function pasting_blueprint(player_index)
-  local player = player_index and game.get_player(player_index)
-  return player ~= nil and player.is_cursor_blueprint()
-end
-
+-- blueprint's direction is deliberate and must win (2.1 raises this event
+-- for those, forums.factorio.com/131355).
 function underground.on_rotated(entity, previous_direction, player_index)
+  local player = player_index and game.get_player(player_index)
+  local pasting = player ~= nil and player.is_cursor_blueprint()
   local f_old = previous_direction % 8 == 0 -- north/south
   local f_new = entity.direction % 8 == 0
-  if f_old ~= f_new and not pasting_blueprint(player_index) then
+  if f_old ~= f_new and not pasting then
     entity.direction = geometry.opposite(previous_direction)
   end
   groups.on_underground_changed(entity)

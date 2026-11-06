@@ -5,7 +5,6 @@
 -- what it paired with.
 local constants = require("scripts.constants")
 local compat = require("scripts.compat")
-local placer = require("scripts.placer")
 
 local tanks = {}
 
@@ -116,10 +115,7 @@ function tanks.on_underground_built(entity, player_index)
   -- Only a hand placement auto-flips: blueprint/robot/script layouts already
   -- say exactly which way each one faces.
   if player_index then
-    local pending = placer.consume_pre_build(player_index)
-    if pending and not pending.from_blueprint then
-      auto_flip(entity)
-    end
+    auto_flip(entity)
   end
   show_pair(entity, player_index)
 end

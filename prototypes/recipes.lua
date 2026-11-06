@@ -67,7 +67,8 @@ end
 for _, tier in ipairs(constants.ALL_TIERS) do
   local r = RECIPES[tier.key]
   data:extend({
-    recipe(tier.item, r.station),
+    recipe(tier.item_h, r.station),
+    recipe(tier.item_v, r.station),
     recipe(tier.balancer_item, r.balancer),
     recipe(tier.underground_item, r.underground),
   })
