@@ -31,6 +31,7 @@ rm -rf "$LAB_MOD/.git" "$LAB_MOD/releases" "$LAB_MOD/tests"
 
 cd "$LAB_DIR"
 echo "== running headless lab =="
+rm -f "$LAB_DIR/factorio-current.log"
 "$FACTORIO_BIN" \
 	--start-server-load-scenario fs-test \
 	--config "$LAB_DIR/lab-config.ini" \

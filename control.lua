@@ -22,6 +22,7 @@ local function init_storage()
   storage.gap_reservations = storage.gap_reservations or {}
   storage.last_drag_tick = storage.last_drag_tick or {}
   storage.pending_ghosts = storage.pending_ghosts or {}
+  storage.swapped_stations = storage.swapped_stations or {}
   storage.pending_dismantles = storage.pending_dismantles or {}
   storage.marked_stations = storage.marked_stations or {}
   storage.cancelled_stand_ins = storage.cancelled_stand_ins or {}
@@ -193,7 +194,12 @@ script.on_event(defines.events.on_post_entity_died, ghosts.on_post_entity_died, 
   { filter = "type", type = "storage-tank" },
   { filter = "type", type = "simple-entity-with-owner" },
 })
-script.on_event(defines.events.on_undo_applied, ghosts.on_undo_applied)
+-- Undo: ghosts swaps ghost-of-removed back to ghost-of-placer, and the
+-- placer path removes stations the undone paste swapped in.
+script.on_event(defines.events.on_undo_applied, function(event)
+  ghosts.on_undo_applied(event)
+  placer.on_undo_applied(event)
+end)
 script.on_event(defines.events.on_player_pipette, ghosts.on_player_pipette)
 
 -- entity is still valid here (same as the other removal events above), but

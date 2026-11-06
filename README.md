@@ -5,7 +5,7 @@ Fork of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-sta
 behaviour. Same entities, items, recipes and technologies as the original, so
 saves and blueprints carry over. But the two mods declare each other
 incompatible (`! freight-stations` in info.json), so the game refuses to load
-with both enabled. Version is bumped to 0.12.10; upstream history is kept in
+with both enabled. Version is bumped to 0.12.11; upstream history is kept in
 `changelog.txt`.
 
 ## What's fixed

@@ -1,9 +1,12 @@
 {
   "name": "freight-stations-rats-fork",
-  "version": "0.12.10",
+  "version": "0.12.11",
   "title": "Freight Stations (rat's fork)",
   "author": "Ragingart (fork maintained by rat)",
   "factorio_version": "2.1",
-  "dependencies": ["base >= 2.1.0", "! freight-stations"],
+  "dependencies": [
+    "base >= 2.1.0",
+    "! freight-stations"
+  ],
   "description": "Fork of Ragingart's Freight Stations with fixes: no rail shift on select-new-contents, flipped/shifted pastes no longer strand balancer ghosts inside stations, stations can sit beside the start of curved rail. Uses the same entity names, so saves migrate over. Do not run alongside the original."
 }

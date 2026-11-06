@@ -89,6 +89,15 @@ end
 local HALF_LONG = constants.STATION_TILES / 2
 local GAP = constants.GAP
 
+-- Undo provenance limits (see placer.on_undo_applied).
+local UNDO_MARGIN = 8
+local UNDO_RECORD_LIMIT = 1024
+
+-- Stable key for a position on the half-tile grid (station/placer centres).
+local function half_tile_key(position)
+  return math.floor(position.x * 2) .. "," .. math.floor(position.y * 2)
+end
+
 function placer.is_placer(name)
   return constants.PLACERS[name] == true
 end
@@ -406,9 +415,34 @@ function placer.swap(placer_entity, player_index)
     quality = quality,
     player = last_user,
   })
-  -- Wired before the build event, which may already replace the station
-  -- with a resized one (scripts/groups.lua carries the wires over).
   if entity then
+    -- Undo provenance: the swap replaces the built placer (part of the
+    -- engine's undo record for a blueprint paste) with a script-created
+    -- station, severing that record - cmd+z would undo everything around
+    -- the station but never the station itself. Record who got the station
+    -- and where, so placer.on_undo_applied can remove it when an undo
+    -- removes entities around it.
+    local owner = player_index or (last_user and last_user.index)
+    if owner then
+      local by_surface = storage.swapped_stations
+      local records = by_surface[surface.index]
+      if not records then
+        records = {}
+        by_surface[surface.index] = records
+      end
+      -- safety valve: this is a convenience history, not a data structure
+      -- of record; when it somehow grows unbounded, start over rather than
+      -- growing without limit.
+      local count = 0
+      for _ in pairs(records) do
+        count = count + 1
+      end
+      if count > UNDO_RECORD_LIMIT then
+        records = {}
+        by_surface[surface.index] = records
+      end
+      records[half_tile_key(entity.position)] = { player = owner, tick = game.tick }
+    end
     wires.restore(entity, saved_wires)
     script.raise_script_built({ entity = entity })
   end
@@ -598,6 +632,63 @@ function placer.retry_ghosts()
         snap_gap_ghost(p.ghost, p.player_index, true)
       else
         snap_ghost(p.ghost, p.player_index, false, true)
+      end
+    end
+  end
+end
+
+-- Undo support, paired with the swap-side record: an undo that removed
+-- entities around a recorded swap of the same player removes the swapped-in
+-- station too, refunding the station item. The engine's own undo record
+-- points at the placer the swap destroyed, so without this the stations
+-- would be the one thing cmd+z leaves behind.
+function placer.on_undo_applied(event)
+  local actions = event.actions
+  if not (actions and actions[1]) then
+    return
+  end
+  local box
+  for _, action in ipairs(actions) do
+    if action.type == "removed-entity" and action.target then
+      local p = action.target.position
+      if p then
+        if not box then
+          box = { x0 = p.x, y0 = p.y, x1 = p.x, y1 = p.y }
+        else
+          box.x0, box.x1 = math.min(box.x0, p.x), math.max(box.x1, p.x)
+          box.y0, box.y1 = math.min(box.y0, p.y), math.max(box.y1, p.y)
+        end
+      end
+    end
+  end
+  if not box then
+    return
+  end
+  box.x0, box.y0 = box.x0 - UNDO_MARGIN, box.y0 - UNDO_MARGIN
+  box.x1, box.y1 = box.x1 + UNDO_MARGIN, box.y1 + UNDO_MARGIN
+  local surface = action and game.get_surface(action.surface_index or 0)
+  local by_surface = storage.swapped_stations[action.surface_index or -1]
+  if not (surface and by_surface) then
+    return
+  end
+  local player = event.player_index and game.get_player(event.player_index)
+  for key, record in pairs(by_surface) do
+    if not event.player_index or record.player == event.player_index then
+      local x, y = key:match("^(-?%d+),(-?%d+)$")
+      x, y = tonumber(x), tonumber(y)
+      if x and x >= box.x0 and x <= box.x1 and y >= box.y0 and y <= box.y1 then
+        by_surface[key] = nil
+        local station = geometry.find_stations(surface, { position = { x = x / 2, y = y / 2 } })[1]
+        if station then
+          local tier = constants.STATION_INFO[station.name].tier
+          local item = { name = tier.item, count = 1, quality = station.quality.name }
+          if not (player and player.insert(item) > 0) then
+            surface.spill_item_stack({ position = station.position, stack = item })
+          end
+          -- raises script_raised_destroy, so the group redistributes the
+          -- station's contents the normal way
+          station.destroy({ raise_destroy = true })
+        end
       end
     end
   end
