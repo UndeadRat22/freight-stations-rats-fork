@@ -6,6 +6,7 @@ local underground = require("scripts.underground")
 local highlight = require("scripts.highlight")
 local dismantle = require("scripts.dismantle")
 local tanks = require("scripts.tanks")
+local migrate = require("scripts.migrate")
 
 local function init_storage()
   storage.next_link_id = storage.next_link_id or 1
@@ -183,6 +184,9 @@ end
 
 script.on_configuration_changed(function()
   init_storage()
+  -- converts 0.12.x / 0.13.x entities to the fixed-size prototypes
+  -- (scripts/migrate.lua); idempotent, does nothing when there are none
+  migrate.run()
   unlock_researched_recipes()
 end)
 

@@ -1,8 +1,7 @@
 -- Auto-connect: whenever a station is built with a matching neighbour
 -- exactly one gap away (the 7-tile pitch that lines a station up with each
--- wagon), a balancer is placed between them automatically -- taken from the
--- builder's inventory for a hand build, or as a ghost for robots to fill,
--- so the connection is requested but never free.
+-- wagon), a balancer is placed between them automatically, paid for from
+-- the builder's inventory. Without a builder or the item, nothing happens.
 local constants = require("scripts.constants")
 local geometry = require("scripts.geometry")
 
@@ -55,6 +54,10 @@ local function tell(surface, position, player, message)
 end
 
 local function place_balancer(surface, position, balancer, direction, force, player)
+  -- An auto-placed balancer costs one balancer item, like any other build,
+  -- paid from the builder's inventory (free in cheat mode). Without a
+  -- builder, or without the item, nothing is placed: no ghost by proxy,
+  -- the connection is simply not made until one is built or pasted there.
   if player and (player.cheat_mode or player.remove_item({ name = BALANCER_ITEM[balancer], count = 1 }) > 0) then
     surface.create_entity({
       name = balancer,
@@ -63,15 +66,6 @@ local function place_balancer(surface, position, balancer, direction, force, pla
       force = force,
       player = player,
       raise_built = true,
-    })
-  else
-    surface.create_entity({
-      name = "entity-ghost",
-      inner_name = balancer,
-      position = position,
-      direction = direction,
-      force = force,
-      player = player,
     })
   end
 end

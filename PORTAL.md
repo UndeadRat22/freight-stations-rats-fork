@@ -12,7 +12,7 @@ tables are avoided.
 
 A rebuild of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-stations) (MIT) around a minimal core. Long storage containers and fluid tanks sit alongside your trains; stations joined by stock balancers share one inventory, and you reach that inventory from every wagon position.
 
-**This fork replaces the original; it does not add to it.** The two mods declare each other incompatible, so the game refuses to load with both enabled. Saves from 0.12.x and 0.13.x do not migrate - start fresh.
+**This fork replaces the original; it does not add to it.** The two mods declare each other incompatible, so the game refuses to load with both enabled. Saves from 0.12.x and 0.13.x migrate on first load: every old group becomes one new group, quality, health and last user carry over, and the old inventory is poured into the new fixed capacity - what exceeds it spills around the group's stations, so trim large groups down before switching if you care where the overflow lands.
 
 ## Build anywhere, undo works
 
@@ -24,7 +24,7 @@ Each tier has a horizontal and a vertical item (linked containers cannot rotate)
 
 A group is every station connected through balancers, and it shares a single linked inventory: six chests' worth for iron, double stack sizes for steel. Members add access points, not space - a row beside a stopped train is one wagon-load of buffer, readable and writable from every station of the row, and every member reports the same contents on the circuit network.
 
-Build or paste a station with a matching neighbour exactly one gap away and a balancer is placed between them automatically - paid from your inventory, or as a ghost for robots when you have none.
+Build a station with a matching neighbour exactly one gap away and a balancer is placed between them automatically - paid for from your inventory, free in cheat mode. No ghosts are placed by proxy: without the item, the connection is simply not made until you build or paste one there.
 
 When you cut a group apart (remove a balancer), the items stay with the largest piece. When two groups grow into one, the loser's items pour into the survivor's. And when the last station of a group is marked for deconstruction, it becomes a plain chest holding the contents, so construction robots empty it load by load instead of spilling it as item piles.
 

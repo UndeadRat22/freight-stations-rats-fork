@@ -4,9 +4,8 @@ Fork of [Ragingart's Freight Stations](https://mods.factorio.com/mod/freight-sta
 (MIT), rebuilt around a minimal core after a first-principles pass: the use
 case is N wagon-adjacent containers sharing one inventory, joined by 1-tile
 balancer buildings - everything that existed only to polish what the engine
-does not support natively is gone. Same entity and item style as the
-original, but **saves from 0.12.x/0.13.x do not migrate** (the per-size
-prototypes no longer exist). The two mods declare each other incompatible,
+does not support natively is gone. Saves from 0.12.x/0.13.x migrate on
+first load (see below). The two mods declare each other incompatible,
 so the game refuses to load with both enabled.
 
 ## How it works
@@ -26,9 +25,10 @@ so the game refuses to load with both enabled.
   desync. Merging two groups pours the loser's items into the survivor's;
   splitting leaves the items with the largest piece and the other pieces
   start empty.
-- **Auto-connect:** build or paste a station with a matching neighbour
-  exactly one gap away and a balancer is placed between them (paid for from
-  your inventory, or as a ghost for robots).
+- **Auto-connect:** build a station with a matching neighbour exactly one
+gap away and a balancer is placed between them, paid for from your
+inventory (free in cheat mode). No ghosts are placed by proxy - without the
+item, nothing happens until you build or paste one there.
 - **Underground balancers** pair across the track like underground belts,
   linking both sides into one inventory; fluid stations are joined by the
   engine's own fluid segments.
@@ -61,6 +61,17 @@ Two engine behaviours this mod depends on (measured headless, 2.1.24):
 `get_contents()` on a linked container's inventory reads empty even with
 items in the slots, so all linked-inventory reads iterate slots; and
 `defines.events.script_raised_built/revive/destroy` have no `on_` prefix.
+
+## Migrating from 0.12.x / 0.13.x
+
+The old size-prototype stations convert to the fixed-size stations on the
+first load (their prototypes stay in the mod, hidden, so the entities
+survive loading). Every old group becomes one new group with a fresh link
+id; quality, health and last user carry over, circuit wires do not. The old
+group inventory is poured into the new fixed capacity, and what exceeds
+it spills around the group's stations - a 50-station group held 50x the
+slots, the new group holds one fixed share, so trim large groups down
+before switching if you care where the overflow lands.
 
 Credits: Ragingart's original Freight Stations (MIT) for the sprites,
 recipes, technologies and the whole idea. Built with the help of the Kimchi
