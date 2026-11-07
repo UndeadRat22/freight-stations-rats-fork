@@ -7,6 +7,7 @@ local highlight = require("scripts.highlight")
 local dismantle = require("scripts.dismantle")
 local tanks = require("scripts.tanks")
 local migrate = require("scripts.migrate")
+local blueprint = require("scripts.blueprint")
 
 local function init_storage()
   storage.next_link_id = storage.next_link_id or 1
@@ -178,6 +179,36 @@ script.on_event(defines.events.on_player_flipped_entity, function(event)
   local entity = event.entity
   if entity and entity.valid and geometry.is_underground(entity.name) then
     underground.on_flipped(entity, event.player_index)
+  end
+end)
+
+-- Blueprint records carry whatever prototype a group member currently sits
+-- on (band variants, dismantling stand-ins), and those have no item of
+-- their own: pasted ghosts of them could never be built. Folding the
+-- records down to the base family prototype at setup time keeps every
+-- copied row buildable with the normal item; the build events re-band the
+-- rebuilt stations. The cursor blueprint is not always a readable stack
+-- (setting up a book entry, or an empty cursor - measured on 2.1.24: the
+-- invalid-stack call red-screened the copy), so the whole fold is guarded
+-- and a failure degrades to an unfolded copy instead of an error.
+script.on_event(defines.events.on_player_setup_blueprint, function(event)
+  local ok, err = pcall(function()
+    local player = game.get_player(event.player_index)
+    local bp = player and player.blueprint_to_setup
+    if not (bp and bp.valid_for_read and bp.is_blueprint) then
+      return
+    end
+    local entities = bp.get_blueprint_entities()
+    if not entities then
+      return
+    end
+    local changed, folded = blueprint.fold_entities(entities)
+    if changed then
+      bp.set_blueprint_entities(folded)
+    end
+  end)
+  if not ok then
+    log("freight-stations: blueprint fold skipped: " .. tostring(err))
   end
 end)
 

@@ -186,6 +186,28 @@ function constants.dismantling_name(family, band)
   return family .. "-dismantling"
 end
 
+-- The base prototype a station-family variant folds down to, or nil when
+-- the name is not one of ours. Band prototypes, dismantling stand-ins and
+-- legacy size prototypes all fold to the band-1 family prototype: blueprint
+-- records are folded at setup time so a copied group is always built from
+-- the base item (band prototypes have no item of their own, and ghosts of
+-- them could never be built).
+function constants.folded_station_name(name)
+  local info = constants.STATION_INFO[name]
+  if info then
+    return info.family
+  end
+  local dismantling = name:match("^(.-)%-dismantling")
+  if dismantling and constants.FAMILY_INFO[dismantling] then
+    return dismantling
+  end
+  local legacy = name:match("^(.-)%-g%d+$")
+  if legacy and constants.STATION_INFO[legacy] then
+    return legacy
+  end
+  return nil
+end
+
 -- The one entity a tier's stations (both axes and the dismantling stand-in)
 -- show up as in the deconstruction planner.
 function constants.deconstruction_entry(tier)

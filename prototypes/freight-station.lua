@@ -60,6 +60,13 @@ local function station_entity(tier, art, family, axis, band)
     -- one member reports the group total.
     circuit_connector = sprite_util.station_circuit_connector(tier, axis),
     circuit_wire_max_distance = default_circuit_wire_max_distance,
+    -- Band prototypes have no item of their own (the band item the player
+    -- crafts places the band-1 prototype), and without a placing item the
+    -- engine refuses them as ghosts ("can not be part of an entity ghost")
+    -- and cannot resolve them for pipette: copying or Q-ing a group member
+    -- did nothing. This reverse mapping lets both resolve to the axis item;
+    -- the build events re-band whatever gets built.
+    placeable_by = { { item = axis == "x" and tier.item_h or tier.item_v, count = 1 } },
   }
 
   -- One deconstruction planner entry per tier: both axes fold into the

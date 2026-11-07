@@ -5,6 +5,16 @@ once (duplicate prototypes). Fixes and changes below are on top of 0.12.9;
 the untouched upstream history follows after the fork entries.
 
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.3
+Date: 2026-11-07
+  Bugfixes:
+    - Fixed copying a blueprint crashing the game ("LuaItemStack API call when LuaItemStack was invalid for read"): the cursor blueprint is not always a readable stack (setting up a book entry, an empty cursor), so the blueprint fold is now guarded and a failure degrades to an unfolded copy instead of an error. Pipette was confirmed working by the report - thanks for testing.
+---------------------------------------------------------------------------------------------------
+Version: 1.1.2
+Date: 2026-11-07
+  Bugfixes:
+    - Fixed Q (pipette) and copy doing nothing on grouped stations: the size-band prototypes have no item of their own (the crafted item places the band-1 prototype), and the engine refuses entities without a placing item as ghosts ("can not be part of an entity ghost") and cannot resolve them for pipette - so only lone, band-1 stations could be pipetted or copied. Band prototypes now declare the axis item as their placeable_by, and blueprint setup folds band variants, dismantling stand-ins and legacy size records down to the base prototype, so every copied row is built from the normal item (construction robots included) and the build events re-band the rebuilt stations.
+---------------------------------------------------------------------------------------------------
 Version: 1.1.1
 Date: 2026-11-06
   Bugfixes:
